@@ -11,11 +11,22 @@ public class D_TalesRunner_Rep : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", 
+			"CoreOnline",
 			"CoreUObject", 
+			"ApplicationCore",
 			"Engine", 
 			"InputCore",
 			"EnhancedInput",
-			"Niagara"
+			"Niagara",
+			"CommonLoadingScreen",
+			"ControlFlows",
+			"CommonOnlineTools",
+			"CommonLoadingScreen",
+			"GameplayAbilities",
+			"GameplayTasks",
+			"GameplayTags",
+			"CommonUI",
+			"CommonInput"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

@@ -107,4 +107,5 @@ private:
 	
 	UPROPERTY()
 	UCameraShakeBase* CurrentSprintShake;
+
 };

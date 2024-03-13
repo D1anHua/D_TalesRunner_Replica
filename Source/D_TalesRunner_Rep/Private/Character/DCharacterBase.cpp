@@ -173,3 +173,4 @@ void ADCharacterBase::SettingDefaultParams()
 	GetCharacterMovement()->MaxAcceleration = DefaultAcceleration;
 	CameraComp->SetFieldOfView(DefaultFov);
 }
+
