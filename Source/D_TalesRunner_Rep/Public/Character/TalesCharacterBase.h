@@ -105,6 +105,8 @@ public:
 	//! End AActor Interface
 
 protected:
+	virtual void OnRep_PlayerState() override;
+	
 	void DisableMovementAndCollision();
 	void InitializeGameplayTags();
 

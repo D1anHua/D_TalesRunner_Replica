@@ -18,15 +18,14 @@ public class D_TalesRunner_Rep : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"Niagara",
-			"CommonLoadingScreen",
 			"ControlFlows",
 			"CommonOnlineTools",
-			"CommonLoadingScreen",
 			"GameplayAbilities",
 			"GameplayTasks",
 			"GameplayTags",
 			"CommonUI",
-			"CommonInput"
+			"CommonInput",
+			"NetCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

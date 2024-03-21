@@ -230,6 +230,13 @@ void ATalesCharacterBase::PreReplication(IRepChangedPropertyTracker& ChangedProp
 		ReplicatedAcceleration.AccelZ			= FMath::FloorToInt((CurrentAccell.Z / MaxAccel) * 127.0);
 	}
 }
+
+void ATalesCharacterBase::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	PawnExtComponent->HandlePlayerStateReplicated();
+}
+
 void ATalesCharacterBase::OnRep_ReplicatedAcceleration()
 {
 	if(UTalesCharacterMovementComponent* TalesMovementComp = Cast<UTalesCharacterMovementComponent>(GetCharacterMovement()))

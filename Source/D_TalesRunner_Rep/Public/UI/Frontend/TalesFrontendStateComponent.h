@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "LoadingProcessInterface.h"
+// #include "LoadingProcessInterface.h"
 #include "Components/GameStateComponent.h"
 #include "TalesFrontendStateComponent.generated.h"
 
@@ -15,7 +15,7 @@ class UCommonActivatableWidget;
  * 
  */
 UCLASS()
-class D_TALESRUNNER_REP_API UTalesFrontendStateComponent : public UGameStateComponent, public ILoadingProcessInterface
+class D_TALESRUNNER_REP_API UTalesFrontendStateComponent : public UGameStateComponent //, public ILoadingProcessInterface
 {
 	GENERATED_BODY()
 

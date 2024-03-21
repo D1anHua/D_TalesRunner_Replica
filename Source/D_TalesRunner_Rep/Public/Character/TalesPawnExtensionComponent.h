@@ -74,7 +74,7 @@ protected:
 	FSimpleMulticastDelegate OnAbilitySystemUnInitialized;
 
 	//! Pawn data used to create the pawn, Specified from a spawn function or on a placed instace
-	UPROPERTY(EditInstanceOnly, ReplicatedUsing = OnRep_PawnData, Category = "Tales|Pawn");
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_PawnData, Category = "Tales|Pawn");
 	TObjectPtr<const UTalesPawnData> PawnData;
 
 	//! Pointer to the ability system component that is cached for convenience(方便)

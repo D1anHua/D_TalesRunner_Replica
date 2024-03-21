@@ -27,7 +27,7 @@ void ATalesPlayerState::SetPawnData(const UTalesPawnData* InPawnData)
 		return;
 	}
 
-	if(PawnData)
+	if(ensureAlways(PawnData))
 	{
 		UE_LOG(LogTales, Error, TEXT("Trying to set PawnData [%s] on player state [%s] that already has valid PawnData [%s]."), *GetNameSafe(InPawnData), *GetNameSafe(this), *GetNameSafe(PawnData));
 		return;
