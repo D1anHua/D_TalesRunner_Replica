@@ -250,7 +250,7 @@ void ATalesCharacterBase::OnRep_ReplicatedAcceleration()
 		FMath::PolarToCartesian(AcceleXYMagnitude, AcceleXYRadians, UnpackedAcceleration.X, UnpackedAcceleration.Y);
 		UnpackedAcceleration.Z = double(ReplicatedAcceleration.AccelZ) * MaxAccel / 127.0;
 
-		TalesMovementComp->SetReplicatedAcceleration(UnpackedAcceleration);
+		// TalesMovementComp->SetReplicatedAcceleration(UnpackedAcceleration);
 	}
 }
 
