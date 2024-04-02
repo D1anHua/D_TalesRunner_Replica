@@ -5,8 +5,9 @@
 #include "Components/TimelineComponent.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "DCharacterBase.generated.h"
+#include "TalesCharacter.generated.h"
 
+class UTalesCharacterMovementComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class USpringArmComponent;
@@ -15,13 +16,15 @@ class UNiagaraComponent;
 struct FInputActionInstance;
 
 UCLASS()
-class D_TALESRUNNER_REP_API ADCharacterBase : public ACharacter
+class D_TALESRUNNER_REP_API ATalesCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
 public:
-	ADCharacterBase();
+	ATalesCharacter(const FObjectInitializer& ObjectInitializer);
 
+	FORCEINLINE UTalesCharacterMovementComponent* GetTalesCharacterMovement() const { return TalesCharacterMovementComponent; }
+	
 protected:
 	/* Enhanced Input, PCInputMapping using for PC Game */
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
@@ -42,6 +45,9 @@ protected:
 	TObjectPtr<USkeletalMeshComponent> JetPackComp;
 
 	// Sprint related Comp
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
+	TObjectPtr<UTalesCharacterMovementComponent> TalesCharacterMovementComponent;
+	
 	// Timeline Comp to control FOV change, when sprint
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sprint|VFX")
 	TObjectPtr<UTimelineComponent> SprintTimeLineComp;
@@ -61,10 +67,8 @@ protected:
 	void SprintStart(const FInputActionInstance& Instance);
 	void SprintStop(const FInputActionInstance& Instance);
 
-	
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
-
 
 public:
 	virtual void Tick(float DeltaTime) override;

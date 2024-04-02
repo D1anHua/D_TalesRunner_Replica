@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Character/DCharacterBase.h"
+#include "..\..\Public\Character\TalesCharacter.h"
 
 #include "Components/AudioComponent.h"
 #include "NiagaraComponent.h"
@@ -9,14 +9,18 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "Character/TalesCharacterMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // TODO: Debug system include File, Delete later
 
 // Sets default values
-ADCharacterBase::ADCharacterBase()
+ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UTalesCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	TalesCharacterMovementComponent = Cast<UTalesCharacterMovementComponent>(GetCharacterMovement());
 
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>("SpringArmComp");
 	SpringArmComp->SetupAttachment(RootComponent);
@@ -44,7 +48,7 @@ ADCharacterBase::ADCharacterBase()
 }
 
 // Called when the game starts or when spawned
-void ADCharacterBase::BeginPlay()
+void ATalesCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	SprintLineNiagaraComp->Deactivate();
@@ -53,10 +57,10 @@ void ADCharacterBase::BeginPlay()
 	JetPackThrusterAudioComp->Stop();
 }
 
-void ADCharacterBase::PostInitializeComponents()
+void ATalesCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-	UpdateSprintFOVTrack.BindDynamic(this, &ADCharacterBase::UpdateSprintFov);
+	UpdateSprintFOVTrack.BindDynamic(this, &ATalesCharacter::UpdateSprintFov);
 
 	//If we have a float curve, bind it's graph to our update function
 	if(SprintFovChangeFloatCurve)
@@ -66,7 +70,7 @@ void ADCharacterBase::PostInitializeComponents()
 }
 
 // Called to bind functionality to input
-void ADCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void ATalesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
@@ -85,16 +89,16 @@ void ADCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	UEnhancedInputComponent* InputComp = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 
 	// General
-	if(ensureAlways(Input_Move))	 InputComp->BindAction(Input_Move,   ETriggerEvent::Triggered, this, &ADCharacterBase::MoveFunc);
-	if(ensureAlways(Input_Jump))	 InputComp->BindAction(Input_Jump,   ETriggerEvent::Triggered, this, &ADCharacterBase::Jump);
+	if(ensureAlways(Input_Move))	 InputComp->BindAction(Input_Move,   ETriggerEvent::Triggered, this, &ATalesCharacter::MoveFunc);
+	if(ensureAlways(Input_Jump))	 InputComp->BindAction(Input_Jump,   ETriggerEvent::Triggered, this, &ATalesCharacter::Jump);
 
 	// Sprint while key is held
-	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Started,   this, &ADCharacterBase::SprintStart);
-	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Completed, this, &ADCharacterBase::SprintStop);
+	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Started,   this, &ATalesCharacter::SprintStart);
+	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Completed, this, &ATalesCharacter::SprintStop);
 }
 
 
-void ADCharacterBase::MoveFunc(const FInputActionInstance& Instance)
+void ATalesCharacter::MoveFunc(const FInputActionInstance& Instance)
 {
 	FRotator ControlRot = GetControlRotation();
 	ControlRot.Pitch = 0.f;
@@ -111,15 +115,16 @@ void ADCharacterBase::MoveFunc(const FInputActionInstance& Instance)
 	AddMovementInput(RightVector, AxisValue.Y);
 }
 
-void ADCharacterBase::SprintStart(const FInputActionInstance& Instance)
+void ATalesCharacter::SprintStart(const FInputActionInstance& Instance)
 {
 	// TODO: Can follow the method in the RPG tutorial to set it up later.
 	// Now just complete in this function
+	TalesCharacterMovementComponent->SprintPressed();
 	if(GetVelocity().Length() != 0.f)
 	{
 		bIsSprint = true;
-		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
-		GetCharacterMovement()->MaxAcceleration = SprintAcceleration;
+		// GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+		// GetCharacterMovement()->MaxAcceleration = SprintAcceleration;
 		// TimeLine to Control Fov
 		SprintTimeLineComp->Play();
 		SprintLineNiagaraComp->Activate();
@@ -134,12 +139,13 @@ void ADCharacterBase::SprintStart(const FInputActionInstance& Instance)
 	}	
 }
 
-void ADCharacterBase::SprintStop(const FInputActionInstance& Instance)
+void ATalesCharacter::SprintStop(const FInputActionInstance& Instance)
 {
+	TalesCharacterMovementComponent->SprintReleased();
 	if(bIsSprint)
 	{
-		GetCharacterMovement()->MaxWalkSpeed = DefaultSpeed;
-		GetCharacterMovement()->MaxAcceleration = DefaultAcceleration;
+		// GetCharacterMovement()->MaxWalkSpeed = DefaultSpeed;
+		// GetCharacterMovement()->MaxAcceleration = DefaultAcceleration;
 		bIsSprint = false;
 		SprintTimeLineComp->Reverse();
 		SprintLineNiagaraComp->Deactivate();
@@ -153,21 +159,21 @@ void ADCharacterBase::SprintStop(const FInputActionInstance& Instance)
 	}
 }
 
-void ADCharacterBase::UpdateSprintFov(float TimelineOutput)
+void ATalesCharacter::UpdateSprintFov(float TimelineOutput)
 {
 	float CurrentFov = TimelineOutput * (SprintFov - DefaultFov) + DefaultFov;
 	CameraComp->SetFieldOfView(CurrentFov);
 }
 
 // Called every frame
-void ADCharacterBase::Tick(float DeltaTime)
+void ATalesCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 }
 
 // TODO: Delete later
-void ADCharacterBase::SettingDefaultParams()
+void ATalesCharacter::SettingDefaultParams()
 {
 	GetCharacterMovement()->MaxWalkSpeed = DefaultSpeed;
 	GetCharacterMovement()->MaxAcceleration = DefaultAcceleration;
