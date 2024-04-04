@@ -36,12 +36,16 @@ public:
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
 	virtual bool IsMovingOnGround() const override;
 	virtual bool CanCrouchInCurrentState() const override;
+	virtual float GetMaxSpeed() const override;
+	virtual float GetMaxBrakingDeceleration() const override;
 	
 protected:
 	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
 	virtual void OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation, const FVector& OldVelocity) override;
 	virtual void UpdateCharacterStateBeforeMovement(float DeltaSeconds) override;
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
+	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
+
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -52,6 +56,8 @@ public:
 	void CrouchPressed();
 	UFUNCTION(BlueprintPure)
 	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
+	UFUNCTION(BlueprintPure)
+	bool IsMovementMode(EMovementMode InMovementMode) const;
 
 private:
 	//! SaveMove snapshot
@@ -96,19 +102,19 @@ private:
 
 	//! Sprint_MaxWalkSpeed
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Speed")
-	float MaxSprintSpeed = 700.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Speed")
-	float MaxWalkSpeed;
+	float MaxSprintSpeed = 750.f;
 
 	//! Slide Parameter
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float MinSlideSpeed = 400;
+	float MinSlideSpeed = 100;
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float SlideEnterImpulse = 500;
+	float MaxSlideSpeed = 400.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float SlideGravityForce = 5000;
+	float SlideEnterImpulse = 400.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float SlideFriction = 1.2;
+	float SlideGravityForce = 8000;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float SlideFriction = 0.6f;
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
 	float BrakingDecelerationSliding = 1000.f;
 
@@ -125,6 +131,7 @@ private:
 	//! Slide Helper Function
 	void EnterSlide();
 	void ExitSlide();
+	bool CanSlide()const;
 	void PhysSlide(float deltaTime, int32 Iterations);
 	bool GetSlideSurface(FHitResult& Hit) const;
 	

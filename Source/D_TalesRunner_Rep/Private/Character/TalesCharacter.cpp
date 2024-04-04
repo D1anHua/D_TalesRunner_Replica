@@ -103,7 +103,7 @@ void ATalesCharacter::MoveFunc(const FInputActionInstance& Instance)
 	FRotator ControlRot = GetControlRotation();
 	// ControlRot.Pitch = 0.f;
 	// ControlRot.Roll  = 0.f;
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, ControlRot.ToString());
+	// GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, ControlRot.ToString());
 
 	// Get Value from input (Combined value from up down right left keys) and convert to Vector2D
 	const FVector2d AxisValue = Instance.GetValue().Get<FVector2d>();
