@@ -2,6 +2,24 @@
 #pragma once
 #include "GameFramework/CharacterMovementComponent.h"
 #include "TalesCharacterMovementComponent.generated.h"
+
+
+class ATalesCharacter;
+/*!
+ * @name ECustomMovementMode
+ * My Custom Movement Mode
+ * In EngineTypes.h
+ * @brief Slide Move mode
+ */
+UENUM(BlueprintType)
+enum ECustomMovementMode
+{
+	CMOVE_None			UMETA(Hidden),
+	CMOVE_Slide			UMETA(DisplayName = "Slide"),
+	CMOVE_Prone			UMETA(DisplayName = "Prone"),
+	CMOVE_Max			UMETA(Hidden),
+};
+
 /*!
  * @name UTalesCharacterMovementComponent
  * Try to process the Acceleration Replicated
@@ -13,13 +31,17 @@ class D_TALESRUNNER_REP_API UTalesCharacterMovementComponent : public UCharacter
 	
 public:
 	UTalesCharacterMovementComponent();
+	virtual void InitializeComponent() override;
 
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
+	virtual bool IsMovingOnGround() const override;
+	virtual bool CanCrouchInCurrentState() const override;
 	
 protected:
 	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
-
 	virtual void OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation, const FVector& OldVelocity) override;
+	virtual void UpdateCharacterStateBeforeMovement(float DeltaSeconds) override;
+	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -28,6 +50,8 @@ public:
 	void SprintReleased();
 	UFUNCTION(BlueprintCallable)
 	void CrouchPressed();
+	UFUNCTION(BlueprintPure)
+	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
 
 private:
 	//! SaveMove snapshot
@@ -38,6 +62,7 @@ private:
 	public:
 		//! 用来说明这个值只占一位
 		uint8 Saved_bWantsToSprint:1;
+		uint8 Saved_bPrevWantsToCrouch:1;
 
 		virtual bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* InCharacter, float MaxDelta) const override;
 		virtual void Clear() override;
@@ -57,10 +82,58 @@ private:
 	
 	//! Sprint begin Logical ---- network safely
 	bool Safe_bWantToSprint;
+	bool Safe_bPrevWantsToCrouch;
+
+	/*
+	 * @brief Actor's Custom Movement Mode(Slide, etc)
+	 * Slide: can Slide when we on the slope
+	*/
+
+	
+	UPROPERTY(Transient)
+	ATalesCharacter* TalesCharacterOwner;
+		
 
 	//! Sprint_MaxWalkSpeed
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Speed")
-	float Sprint_MaxWalkSpeed;
+	float MaxSprintSpeed = 700.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Speed")
-	float Walk_MaxWalkSpeed;
+	float MaxWalkSpeed;
+
+	//! Slide Parameter
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float MinSlideSpeed = 400;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float SlideEnterImpulse = 500;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float SlideGravityForce = 5000;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float SlideFriction = 1.2;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float BrakingDecelerationSliding = 1000.f;
+
+	//! Slide Parameter
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float ProneEnterHoldDuration = .2f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float ProneSlideEnterImpulse = 300.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float ProneMaxSpeed = 300.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float BrakingDecelerationProne = 2500.f;
+
+	//! Slide Helper Function
+	void EnterSlide();
+	void ExitSlide();
+	void PhysSlide(float deltaTime, int32 Iterations);
+	bool GetSlideSurface(FHitResult& Hit) const;
+	
+	//! Prone Helper Function
+	void EnterProne();
+	void ExitProne();
+	void PhysProne(float deltaTime, int32 Iterations);
+	bool GetProne(FHitResult& Hit) const;
 };
+
+
+

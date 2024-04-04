@@ -35,14 +35,14 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	SprintLineNiagaraComp->SetRelativeRotation(FRotator(270.f, 0.f, 0.f));
 	SprintLineNiagaraComp->SetRelativeScale3D(FVector(3.f, 3.f, 3.f));
 
-	// JetPack Setting
-	JetPackComp = CreateDefaultSubobject<USkeletalMeshComponent>("JetPackComp");
-	JetPackComp->SetupAttachment(GetMesh(), TEXT("BackpackSocket"));
-	
-	JetPackThrusterComp = CreateDefaultSubobject<UNiagaraComponent>("JetPackThrusterComp");
-	JetPackThrusterComp->SetupAttachment(JetPackComp);
-
-	JetPackThrusterAudioComp = CreateDefaultSubobject<UAudioComponent>("JetPackSFX");
+	// // JetPack Setting
+	// JetPackComp = CreateDefaultSubobject<USkeletalMeshComponent>("JetPackComp");
+	// JetPackComp->SetupAttachment(GetMesh(), TEXT("BackpackSocket"));
+	//
+	// JetPackThrusterComp = CreateDefaultSubobject<UNiagaraComponent>("JetPackThrusterComp");
+	// JetPackThrusterComp->SetupAttachment(JetPackComp);
+	//
+	// JetPackThrusterAudioComp = CreateDefaultSubobject<UAudioComponent>("JetPackSFX");
 	// TODO: Params Setting
 	SettingDefaultParams();
 }
@@ -52,9 +52,9 @@ void ATalesCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	SprintLineNiagaraComp->Deactivate();
-	JetPackThrusterComp->Deactivate();
-	JetPackThrusterAudioComp->Activate();
-	JetPackThrusterAudioComp->Stop();
+	// JetPackThrusterComp->Deactivate();
+	// JetPackThrusterAudioComp->Activate();
+	// JetPackThrusterAudioComp->Stop();
 }
 
 void ATalesCharacter::PostInitializeComponents()
@@ -101,17 +101,19 @@ void ATalesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 void ATalesCharacter::MoveFunc(const FInputActionInstance& Instance)
 {
 	FRotator ControlRot = GetControlRotation();
-	ControlRot.Pitch = 0.f;
-	ControlRot.Roll  = 0.f;
+	// ControlRot.Pitch = 0.f;
+	// ControlRot.Roll  = 0.f;
+	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, ControlRot.ToString());
 
 	// Get Value from input (Combined value from up down right left keys) and convert to Vector2D
 	const FVector2d AxisValue = Instance.GetValue().Get<FVector2d>();
 
 	// Move forward / back
+	const FVector ForVector = FRotationMatrix(ControlRot).GetUnitAxis(EAxis::X);
 	AddMovementInput(ControlRot.Vector(), AxisValue.X);
 
 	// Move Right / Left
-	const FVector RightVector = FRotationMatrix(ControlRot).GetScaledAxis(EAxis::Y);
+	const FVector RightVector = FRotationMatrix(ControlRot).GetUnitAxis(EAxis::Y);
 	AddMovementInput(RightVector, AxisValue.Y);
 }
 
@@ -132,8 +134,8 @@ void ATalesCharacter::SprintStart(const FInputActionInstance& Instance)
 		{
 			CurrentSprintShake =  GetWorld()->GetFirstPlayerController()->PlayerCameraManager->StartCameraShake(SprintShake, 1);
 		}
-		JetPackThrusterComp->Activate();
-		JetPackThrusterAudioComp->Play();
+		// JetPackThrusterComp->Activate();
+		// JetPackThrusterAudioComp->Play();
 		// TODO: Add Camera Shake later, But not use today.
 
 	}	
@@ -154,8 +156,8 @@ void ATalesCharacter::SprintStop(const FInputActionInstance& Instance)
 			GetWorld()->GetFirstPlayerController()->PlayerCameraManager->StopCameraShake(CurrentSprintShake, true);
 			CurrentSprintShake = nullptr;
 		}
-		JetPackThrusterComp->Deactivate();
-		JetPackThrusterAudioComp->Stop();
+		// JetPackThrusterComp->Deactivate();
+		// JetPackThrusterAudioComp->Stop();
 	}
 }
 
@@ -163,6 +165,18 @@ void ATalesCharacter::UpdateSprintFov(float TimelineOutput)
 {
 	float CurrentFov = TimelineOutput * (SprintFov - DefaultFov) + DefaultFov;
 	CameraComp->SetFieldOfView(CurrentFov);
+}
+
+FCollisionQueryParams ATalesCharacter::GetIgnoreCharacterParams() const
+{
+	FCollisionQueryParams Params;
+
+	TArray<AActor*> CharacterChileren;
+	GetAllChildActors(CharacterChileren);
+	Params.AddIgnoredActors(CharacterChileren);
+	Params.AddIgnoredActor(this);
+
+	return Params;
 }
 
 // Called every frame

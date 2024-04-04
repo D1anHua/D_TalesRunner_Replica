@@ -24,6 +24,7 @@ public:
 	ATalesCharacter(const FObjectInitializer& ObjectInitializer);
 
 	FORCEINLINE UTalesCharacterMovementComponent* GetTalesCharacterMovement() const { return TalesCharacterMovementComponent; }
+	FCollisionQueryParams GetIgnoreCharacterParams() const;
 	
 protected:
 	/* Enhanced Input, PCInputMapping using for PC Game */
@@ -41,8 +42,8 @@ protected:
 	TObjectPtr<USpringArmComponent> SpringArmComp;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UCameraComponent>    CameraComp;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	TObjectPtr<USkeletalMeshComponent> JetPackComp;
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	// TObjectPtr<USkeletalMeshComponent> JetPackComp;
 
 	// Sprint related Comp
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
@@ -53,11 +54,11 @@ protected:
 	TObjectPtr<UTimelineComponent> SprintTimeLineComp;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sprint|VFX")
 	TObjectPtr<UNiagaraComponent> SprintLineNiagaraComp;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "JetPack|VFX")
-	TObjectPtr<UNiagaraComponent> JetPackThrusterComp;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "JetPack|SFX")
-	TObjectPtr<UAudioComponent> JetPackThrusterAudioComp;
+	//
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "JetPack|VFX")
+	// TObjectPtr<UNiagaraComponent> JetPackThrusterComp;
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "JetPack|SFX")
+	// TObjectPtr<UAudioComponent> JetPackThrusterAudioComp;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "CameraShake")
 	TSubclassOf<UCameraShakeBase> SprintShake;
@@ -79,7 +80,7 @@ public:
 protected:
 	// Default(walk) Speed.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
-	float DefaultSpeed			= 600.f;
+	float DefaultSpeed			= 400.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
 	float DefaultAcceleration     = 800.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
@@ -88,7 +89,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
 	bool  bIsSprint				= false;;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
-	float SprintSpeed				= 1000.f;
+	float SprintSpeed				= 600.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
 	float SprintAcceleration		= 1200.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
@@ -98,6 +99,7 @@ protected:
 public:
 	UPROPERTY(EditAnywhere, Category = "Sprint|Timeline")
 	UCurveFloat* SprintFovChangeFloatCurve;
+	
 	
 protected:
 	// Track used for Sprint Fov Change
