@@ -58,12 +58,19 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
 	float BrakingDecelerationProne = 2500.f;
 	
+	
+	UPROPERTY(Transient)
+	ATalesCharacter* TalesCharacterOwner;
+	
 	//! Sprint begin Logical ---- network safely
 	bool Safe_bWantToSprint;
 	bool Safe_bPrevWantsToCrouch;
-	
+	bool Safe_bWantsToProne;
+
+	FTimerHandle TimerHandle_EnterProne;
 public:
 	UTalesCharacterMovementComponent();
+	
 	virtual void InitializeComponent() override;
 
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
@@ -87,6 +94,8 @@ public:
 	void SprintReleased();
 	UFUNCTION(BlueprintCallable)
 	void CrouchPressed();
+	UFUNCTION(BlueprintCallable)
+	void CrouchReleased();
 	UFUNCTION(BlueprintPure)
 	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
 	UFUNCTION(BlueprintPure)
@@ -97,11 +106,20 @@ private:
 	class FSavedmove_Tales : public FSavedMove_Character
 	{
 		typedef  FSavedMove_Character Super;
-		
 	public:
+		enum CompressedFlag
+		{
+			FLAG_Sprint    = 0x10,
+			FLAG_Custom_1  = 0x20,
+			FLAG_Custom_2  = 0x40,
+			FLAG_Custom_3  = 0x80,
+		};
 		//! 用来说明这个值只占一位
 		uint8 Saved_bWantsToSprint:1;
+
+		// Other Variables
 		uint8 Saved_bPrevWantsToCrouch:1;
+		uint8 Saved_bWantsToProne:1;
 
 		virtual bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* InCharacter, float MaxDelta) const override;
 		virtual void Clear() override;
@@ -123,11 +141,6 @@ private:
 	 * Slide: can Slide when we on the slope
 	*/
 
-	
-	UPROPERTY(Transient)
-	ATalesCharacter* TalesCharacterOwner;
-		
-
 
 	//! Slide Helper Function
 	// void EnterSlide();
@@ -135,13 +148,15 @@ private:
 	void ExitSlide();
 	bool CanSlide()const;
 	void PhysSlide(float deltaTime, int32 Iterations);
-	bool GetSlideSurface(FHitResult& Hit) const;
 	
 	//! Prone Helper Function
+	void TryEnterProne(){Safe_bWantsToProne = true;};
+	UFUNCTION(Server, Reliable) void Server_EnterProne();
+	
 	void EnterProne(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
 	void ExitProne();
+	bool CanProne() const;
 	void PhysProne(float deltaTime, int32 Iterations);
-	bool GetProne(FHitResult& Hit) const;
 };
 
 
