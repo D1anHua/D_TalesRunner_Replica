@@ -28,6 +28,39 @@ UCLASS(Config = Game)
 class D_TALESRUNNER_REP_API UTalesCharacterMovementComponent : public UCharacterMovementComponent
 {
 	GENERATED_BODY()
+
+private:
+	//! Sprint_MaxWalkSpeed
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Speed")
+	float MaxSprintSpeed = 750.f;
+
+	//! Slide Parameter
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float MinSlideSpeed = 100;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float MaxSlideSpeed = 400.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float SlideEnterImpulse = 400.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float SlideGravityForce = 4000;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float SlideFriction = .06f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float BrakingDecelerationSliding = 1000.f;
+
+	//! Slide Parameter
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float ProneEnterHoldDuration = .2f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float ProneSlideEnterImpulse = 300.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float ProneMaxSpeed = 300.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
+	float BrakingDecelerationProne = 2500.f;
+	
+	//! Sprint begin Logical ---- network safely
+	bool Safe_bWantToSprint;
+	bool Safe_bPrevWantsToCrouch;
 	
 public:
 	UTalesCharacterMovementComponent();
@@ -85,11 +118,6 @@ private:
 		virtual FSavedMovePtr AllocateNewMove() override;
 	};
 
-	
-	//! Sprint begin Logical ---- network safely
-	bool Safe_bWantToSprint;
-	bool Safe_bPrevWantsToCrouch;
-
 	/*
 	 * @brief Actor's Custom Movement Mode(Slide, etc)
 	 * Slide: can Slide when we on the slope
@@ -100,43 +128,17 @@ private:
 	ATalesCharacter* TalesCharacterOwner;
 		
 
-	//! Sprint_MaxWalkSpeed
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Speed")
-	float MaxSprintSpeed = 750.f;
-
-	//! Slide Parameter
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float MinSlideSpeed = 100;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float MaxSlideSpeed = 400.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float SlideEnterImpulse = 400.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float SlideGravityForce = 8000;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float SlideFriction = 0.6f;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float BrakingDecelerationSliding = 1000.f;
-
-	//! Slide Parameter
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float ProneEnterHoldDuration = .2f;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float ProneSlideEnterImpulse = 300.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float ProneMaxSpeed = 300.f;
-	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
-	float BrakingDecelerationProne = 2500.f;
 
 	//! Slide Helper Function
-	void EnterSlide();
+	// void EnterSlide();
+	void EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
 	void ExitSlide();
 	bool CanSlide()const;
 	void PhysSlide(float deltaTime, int32 Iterations);
 	bool GetSlideSurface(FHitResult& Hit) const;
 	
 	//! Prone Helper Function
-	void EnterProne();
+	void EnterProne(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
 	void ExitProne();
 	void PhysProne(float deltaTime, int32 Iterations);
 	bool GetProne(FHitResult& Hit) const;

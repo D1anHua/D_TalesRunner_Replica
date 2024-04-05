@@ -7,19 +7,14 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
 
-// UTalesCharacterMovementComponent::FSavedmove_Tales::FSavedmove_Tales()
-// {
-// 	FSavedMove_Character();
-// 	Saved_bWantsToSprint = 0;
-// }
 
 UTalesCharacterMovementComponent::UTalesCharacterMovementComponent()
 {
 	NavAgentProps.bCanCrouch = true;
 	// Sprint
 	Safe_bWantToSprint = false;
-	MaxSprintSpeed = 1400;
-	MaxWalkSpeed = 700;
+	Safe_bPrevWantsToCrouch = false;
+	TalesCharacterOwner = nullptr;
 }
 
 void UTalesCharacterMovementComponent::InitializeComponent()
@@ -55,19 +50,13 @@ void UTalesCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 	Safe_bWantToSprint = (Flags & FSavedMove_Character::FLAG_Custom_0) != 0;
 }
 
-
-void UTalesCharacterMovementComponent::EnterSlide()
+void UTalesCharacterMovementComponent::EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
 {
 	bWantsToCrouch = true;
 	bOrientRotationToMovement = false;
 	Velocity += Velocity.GetSafeNormal2D() * SlideEnterImpulse;
-	SetMovementMode(MOVE_Custom, CMOVE_Slide);
-}
 
-void UTalesCharacterMovementComponent::ExitSlide()
-{
-	bWantsToCrouch = false;
-	bOrientRotationToMovement = true;
+	FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, true, NULL);
 }
 
 bool UTalesCharacterMovementComponent::CanSlide() const
@@ -78,6 +67,16 @@ bool UTalesCharacterMovementComponent::CanSlide() const
 	bool bValidSurface = GetWorld()->LineTraceTestByProfile(Start, End, ProfileName, TalesCharacterOwner->GetIgnoreCharacterParams());
 	bool bEnoughSpeed = Velocity.SizeSquared() > pow(MinSlideSpeed, 2);
 	return bValidSurface && bEnoughSpeed;
+}
+
+void UTalesCharacterMovementComponent::ExitSlide()
+{
+	bWantsToCrouch = false;
+	bOrientRotationToMovement = true;
+}
+
+void UTalesCharacterMovementComponent::EnterProne(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
+{
 }
 
 // Slide
@@ -129,13 +128,25 @@ void UTalesCharacterMovementComponent::PhysSlide(float deltaTime, int32 Iteratio
 		FVector SlopeForce = CurrentFloor.HitResult.Normal;
 		SlopeForce.Z = 0.f;
 		Velocity += SlopeForce * SlideGravityForce * deltaTime;
-
-		Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal2D());
-		GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Red, *FString::SanitizeFloat(Acceleration.X / Acceleration.Y));
-		UE_LOG(LogBlueprintUserMessages, Error, TEXT("%f, %f"), Acceleration.X, Acceleration.Y);
+		float BrakingDeceleration = 0;
+		// GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Red, Acceleration.ToString());
+		// GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Green, Velocity.ToString());
+		// GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Yellow, *FString(FString::SanitizeFloat(FVector::DotProduct(Acceleration, Velocity))));
+		if(Acceleration.IsNearlyZero() || FVector::DotProduct(Acceleration, Velocity) < 0)
+		{
+			BrakingDeceleration = GetMaxBrakingDeceleration();
+			Acceleration = FVector::ZeroVector;
+		}
+		else
+		{
+			Acceleration = Acceleration.ProjectOnTo(UpdatedComponent->GetRightVector().GetSafeNormal2D());
+		}
+		// UE_LOG(LogBlueprintUserMessages, Error, TEXT("%f, %f"), Acceleration.X, Acceleration.Y);
+		// DrawDebugDirectionalArrow(GetWorld(), UpdatedComponent->GetComponentLocation(), UpdatedComponent->GetComponentLocation() + 20.f * Acceleration, 20.f, FColor::Red, true, 0.1f);
 				
+		// GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Yellow, *FString(FString::SanitizeFloat(BrakingDeceleration)));
 		// Apply acceleration
-		CalcVelocity(timeTick, GroundFriction * SlideFriction, false, GetMaxBrakingDeceleration());
+		CalcVelocity(timeTick, GroundFriction * SlideFriction, true, BrakingDeceleration);
 
 		// Compute move parameters
 		const FVector MoveVelocity = Velocity;
@@ -294,10 +305,6 @@ bool UTalesCharacterMovementComponent::GetSlideSurface(FHitResult& Hit) const
 	FVector End = Start + CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 2.f * FVector::DownVector;
 	FName ProfileName = TEXT("BlockAll");
 	return GetWorld()->LineTraceSingleByProfile(Hit, Start, End, ProfileName, TalesCharacterOwner->GetIgnoreCharacterParams());
-}
-
-void UTalesCharacterMovementComponent::EnterProne()
-{
 }
 
 void UTalesCharacterMovementComponent::ExitProne()
@@ -462,8 +469,7 @@ void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float 
 {
 	if(MovementMode == MOVE_Walking && !bWantsToCrouch && Safe_bPrevWantsToCrouch)
 	{
-		FHitResult PotentialSlideSurface;
-		if(Velocity.SizeSquared() > pow(MinSlideSpeed, 2) && GetSlideSurface(PotentialSlideSurface))
+		if(CanSlide())
 		{
 			SetMovementMode(MOVE_Custom, CMOVE_Slide);
 		}
@@ -473,10 +479,10 @@ void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float 
 	{
 		SetMovementMode(MOVE_Walking);
 	}
-	if(IsCustomMovementMode(CMOVE_Prone) && !bWantsToCrouch)
-	{
-		SetMovementMode(MOVE_Walking);
-	}
+	// if(IsCustomMovementMode(CMOVE_Prone) && !bWantsToCrouch)
+	// {
+	// 	SetMovementMode(MOVE_Walking);
+	// }
 	
 	Super::UpdateCharacterStateBeforeMovement(DeltaSeconds);
 }
@@ -491,9 +497,9 @@ void UTalesCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterati
 	case CMOVE_Slide:
 		PhysSlide(deltaTime, Iterations);
 		break;
-	case CMOVE_Prone:
-		PhysProne(deltaTime, Iterations);
-		break;
+	// case CMOVE_Prone:
+	// 	PhysProne(deltaTime, Iterations);
+	// 	break;
 	default:
 		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
 	}
@@ -503,12 +509,13 @@ void UTalesCharacterMovementComponent::OnMovementModeChanged(EMovementMode Previ
 	uint8 PreviousCustomMode)
 {
 	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
-
+	// 之前的movement mode退出
 	if(PreviousCustomMode == MOVE_Custom && PreviousCustomMode == CMOVE_Slide) ExitSlide();
-	if(PreviousCustomMode == MOVE_Custom && PreviousCustomMode == CMOVE_Prone) ExitSlide();
+	// if(PreviousCustomMode == MOVE_Custom && PreviousCustomMode == CMOVE_Prone) ExitProne();
 
-	if(IsCustomMovementMode(CMOVE_Slide)) EnterSlide();
-	if(IsCustomMovementMode(CMOVE_Prone)) EnterProne();
+	// 进入现在的movement mode
+	if(IsCustomMovementMode(CMOVE_Slide)) EnterSlide(PreviousMovementMode, (ECustomMovementMode)PreviousMovementMode);
+	// if(IsCustomMovementMode(CMOVE_Prone)) EnterProne(PreviousMovementMode, (ECustomMovementMode)PreviousMovementMode);
 	
 }
 
