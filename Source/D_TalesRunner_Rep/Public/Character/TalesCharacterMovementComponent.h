@@ -69,15 +69,21 @@ private:
 
 	FTimerHandle TimerHandle_EnterProne;
 public:
+	// Initial Function
 	UTalesCharacterMovementComponent();
-	
 	virtual void InitializeComponent() override;
 
-	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
+	// Helper Function
+	UFUNCTION(BlueprintPure)
+	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
+	UFUNCTION(BlueprintPure)
+	bool IsMovementMode(EMovementMode InMovementMode) const;
+
 	virtual bool IsMovingOnGround() const override;
 	virtual bool CanCrouchInCurrentState() const override;
 	virtual float GetMaxSpeed() const override;
 	virtual float GetMaxBrakingDeceleration() const override;
+	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
 	
 protected:
 	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
@@ -86,22 +92,26 @@ protected:
 	virtual void PhysCustom(float deltaTime, int32 Iterations) override;
 	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
 
-
 public:
-	UFUNCTION(BlueprintCallable)
-	void SprintPressed();
-	UFUNCTION(BlueprintCallable)
-	void SprintReleased();
-	UFUNCTION(BlueprintCallable)
-	void CrouchPressed();
-	UFUNCTION(BlueprintCallable)
-	void CrouchReleased();
-	UFUNCTION(BlueprintPure)
-	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
-	UFUNCTION(BlueprintPure)
-	bool IsMovementMode(EMovementMode InMovementMode) const;
+	// --------------------------------------- Slide Mode -------------------------------------------------
+	//! Slide Helper Function
+	void EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
+	void ExitSlide();
+	bool CanSlide()const;
+	void PhysSlide(float deltaTime, int32 Iterations);
 
-private:
+	// --------------------------------------- Prone Mode -------------------------------------------------
+	//! Prone Helper Function
+	void TryEnterProne(){Safe_bWantsToProne = true;};
+	UFUNCTION(Server, Reliable) void Server_EnterProne();
+	
+	void EnterProne(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
+	void ExitProne();
+	bool CanProne() const;
+	void PhysProne(float deltaTime, int32 Iterations);
+	
+public:
+	// --------------------------------------- Saved Mode -------------------------------------------------
 	//! SaveMove snapshot
 	class FSavedmove_Tales : public FSavedMove_Character
 	{
@@ -121,13 +131,15 @@ private:
 		uint8 Saved_bPrevWantsToCrouch:1;
 		uint8 Saved_bWantsToProne:1;
 
+		FSavedmove_Tales();
 		virtual bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* InCharacter, float MaxDelta) const override;
 		virtual void Clear() override;
 		virtual uint8 GetCompressedFlags() const override;
 		virtual void SetMoveFor(ACharacter* C, float InDeltaTime, FVector const& NewAccel, FNetworkPredictionData_Client_Character& ClientData) override;
 		virtual void PrepMoveFor(ACharacter* C) override;
 	};
-
+	
+	// --------------------------------------- Network Prediction Data -------------------------------------------------
 	class FNetworkPredictionData_Client_Tales : public FNetworkPredictionData_Client_Character
 	{
 	public:
@@ -135,28 +147,18 @@ private:
 		typedef FNetworkPredictionData_Client_Character Super;
 		virtual FSavedMovePtr AllocateNewMove() override;
 	};
-
-	/*
-	 * @brief Actor's Custom Movement Mode(Slide, etc)
-	 * Slide: can Slide when we on the slope
-	*/
-
-
-	//! Slide Helper Function
-	// void EnterSlide();
-	void EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
-	void ExitSlide();
-	bool CanSlide()const;
-	void PhysSlide(float deltaTime, int32 Iterations);
 	
-	//! Prone Helper Function
-	void TryEnterProne(){Safe_bWantsToProne = true;};
-	UFUNCTION(Server, Reliable) void Server_EnterProne();
-	
-	void EnterProne(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
-	void ExitProne();
-	bool CanProne() const;
-	void PhysProne(float deltaTime, int32 Iterations);
+public:
+	// --------------------------------------- Trigger Data -------------------------------------------------
+	// @TODO This Can Move to GAS
+	UFUNCTION(BlueprintCallable)
+	void SprintPressed();
+	UFUNCTION(BlueprintCallable)
+	void SprintReleased();
+	UFUNCTION(BlueprintCallable)
+	void CrouchPressed();
+	UFUNCTION(BlueprintCallable)
+	void CrouchReleased();
 };
 
 

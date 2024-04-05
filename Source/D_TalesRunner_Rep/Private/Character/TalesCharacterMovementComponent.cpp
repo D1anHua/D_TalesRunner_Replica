@@ -8,6 +8,95 @@
 #include "GameFramework/Character.h"
 
 
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
+// Savedmode_Tales
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma region SavedMove
+UTalesCharacterMovementComponent::FSavedmove_Tales::FSavedmove_Tales()
+{
+	Saved_bWantsToProne = 0;
+}
+
+bool UTalesCharacterMovementComponent::FSavedmove_Tales::CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* InCharacter, float MaxDelta) const
+{
+	FSavedmove_Tales* NewTalesMove = static_cast<FSavedmove_Tales*>(NewMove.Get());
+	if(Saved_bWantsToSprint != NewTalesMove->Saved_bWantsToSprint)
+	{
+		return false;
+	}
+	
+	return FSavedMove_Character::CanCombineWith(NewMove, InCharacter, MaxDelta);
+}
+
+void UTalesCharacterMovementComponent::FSavedmove_Tales::Clear()
+{
+	FSavedMove_Character::Clear();
+	Saved_bWantsToSprint = 0;
+}
+
+uint8 UTalesCharacterMovementComponent::FSavedmove_Tales::GetCompressedFlags() const
+{
+	uint8 Result = Super::GetCompressedFlags();
+	if(Saved_bWantsToSprint) Result |= FLAG_Sprint;
+
+	return Result;
+}
+
+void UTalesCharacterMovementComponent::FSavedmove_Tales::SetMoveFor(ACharacter* C, float InDeltaTime,
+	FVector const& NewAccel, FNetworkPredictionData_Client_Character& ClientData)
+{
+	FSavedMove_Character::SetMoveFor(C, InDeltaTime, NewAccel, ClientData);
+	UTalesCharacterMovementComponent* CharacterMovement = Cast<UTalesCharacterMovementComponent>(C->GetCharacterMovement());
+	Saved_bWantsToSprint = CharacterMovement->Safe_bWantToSprint;
+	Saved_bPrevWantsToCrouch = CharacterMovement->Safe_bPrevWantsToCrouch;
+	Saved_bWantsToProne = CharacterMovement->Safe_bWantsToProne;
+}
+
+void UTalesCharacterMovementComponent::FSavedmove_Tales::PrepMoveFor(ACharacter* C)
+{
+	FSavedMove_Character::PrepMoveFor(C);
+
+	UTalesCharacterMovementComponent* CharacterMovement = Cast<UTalesCharacterMovementComponent>(C->GetCharacterMovement());
+	CharacterMovement->Safe_bWantToSprint = Saved_bWantsToSprint;
+	CharacterMovement->Safe_bPrevWantsToCrouch = Saved_bPrevWantsToCrouch;
+	CharacterMovement->Safe_bWantsToProne= Saved_bWantsToProne;
+}
+
+#pragma endregion
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
+// PredicationData_Client
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
+#pragma region PredicationData
+FNetworkPredictionData_Client* UTalesCharacterMovementComponent::GetPredictionData_Client() const
+{
+	check(PawnOwner != nullptr);
+	if(ClientPredictionData == nullptr)
+	{
+		UTalesCharacterMovementComponent* MutableThis = const_cast<UTalesCharacterMovementComponent*>(this);
+		MutableThis->ClientPredictionData = new FNetworkPredictionData_Client_Tales(*this);
+		MutableThis->ClientPredictionData->MaxSmoothNetUpdateDist = 92.f;
+		MutableThis->ClientPredictionData->NoSmoothNetUpdateDist = 140.f;
+	}	
+	return ClientPredictionData;
+}
+
+UTalesCharacterMovementComponent::FNetworkPredictionData_Client_Tales::FNetworkPredictionData_Client_Tales(
+	const UCharacterMovementComponent& ClientMovement) : Super(ClientMovement)
+{
+}
+
+FSavedMovePtr UTalesCharacterMovementComponent::FNetworkPredictionData_Client_Tales::AllocateNewMove()
+{
+	Super::AllocateNewMove();
+	return FSavedMovePtr(new FSavedmove_Tales);
+}
+
+#pragma endregion
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
+// TalesCharacterMovementComponent
+// ///////////////////////////////////////////////////////////////////////////////////////////////////
 UTalesCharacterMovementComponent::UTalesCharacterMovementComponent()
 {
 	NavAgentProps.bCanCrouch = true;
@@ -19,32 +108,60 @@ void UTalesCharacterMovementComponent::InitializeComponent()
 	TalesCharacterOwner = Cast<ATalesCharacter>(GetOwner());
 }
 
-void UTalesCharacterMovementComponent::SprintPressed()
-{
-	Safe_bWantToSprint = true;
-}
-
-void UTalesCharacterMovementComponent::SprintReleased()
-{
-	Safe_bWantToSprint = false;
-}
-
-void UTalesCharacterMovementComponent::CrouchPressed()
-{
-	bWantsToCrouch = !bWantsToCrouch;
-	GetWorld()->GetTimerManager().SetTimer(TimerHandle_EnterProne, this, &UTalesCharacterMovementComponent::TryEnterProne, ProneEnterHoldDuration);
-}
-
-void UTalesCharacterMovementComponent::CrouchReleased()
-{
-	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_EnterProne);
-}
-
 bool UTalesCharacterMovementComponent::IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const
 {
 	return MovementMode == MOVE_Custom && CustomMovementMode == InCustomMocementMode;
 }
 
+bool UTalesCharacterMovementComponent::IsMovementMode(EMovementMode InMovementMode) const
+{
+	return InMovementMode == MovementMode;
+}
+
+float UTalesCharacterMovementComponent::GetMaxSpeed() const
+{
+	if(IsMovementMode(MOVE_Walking) && Safe_bWantToSprint && !IsCrouching()) return MaxSprintSpeed;
+	if(MovementMode != MOVE_Custom) return Super::GetMaxSpeed();
+	switch (CustomMovementMode)
+	{
+	case CMOVE_Slide:
+		return MaxSlideSpeed;
+	case CMOVE_Prone:
+		return ProneMaxSpeed;
+	default:
+		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
+		return  -1.f;
+	}
+}
+
+float UTalesCharacterMovementComponent::GetMaxBrakingDeceleration() const
+{
+	if(MovementMode != MOVE_Custom) return Super::GetMaxBrakingDeceleration();
+	
+	switch (CustomMovementMode)
+	{
+	case CMOVE_Slide:
+		return BrakingDecelerationSliding;
+	case CMOVE_Prone:
+		return BrakingDecelerationProne;
+	default:
+		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
+		return  -1.f;
+	}
+}
+
+bool UTalesCharacterMovementComponent::IsMovingOnGround() const
+{
+	return Super::IsMovingOnGround() || IsCustomMovementMode(CMOVE_Slide) || IsCustomMovementMode(CMOVE_Prone);
+}
+
+bool UTalesCharacterMovementComponent::CanCrouchInCurrentState() const
+{
+	return Super::CanCrouchInCurrentState() && IsMovingOnGround();
+}
+
+// ----------------------------   Extended Character Movement Component   ------------------------------------
+#pragma region ExtendedComp
 void UTalesCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 {
 	Super::UpdateFromCompressedFlags(Flags);
@@ -52,6 +169,82 @@ void UTalesCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 	Safe_bWantToSprint = (Flags & FSavedmove_Tales::FLAG_Sprint) != 0;
 }
 
+void UTalesCharacterMovementComponent::OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation,
+                                                         const FVector& OldVelocity)
+{
+	Super::OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
+
+	Safe_bPrevWantsToCrouch = bWantsToCrouch;
+}
+
+void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
+{
+	// Slide
+	if(MovementMode == MOVE_Walking && !bWantsToCrouch && Safe_bPrevWantsToCrouch)
+	{
+		if(CanSlide())
+		{
+			SetMovementMode(MOVE_Custom, CMOVE_Slide);
+		}
+	}
+	else if(IsCustomMovementMode(CMOVE_Slide) && !bWantsToCrouch)
+	{
+		SetMovementMode(MOVE_Walking);
+	}
+
+	// Prone
+	if(Safe_bWantsToProne)
+	{
+		if(CanProne())
+		{
+			SetMovementMode(MOVE_Custom, CMOVE_Prone);
+			if(!CharacterOwner->HasAuthority()) Server_EnterProne();
+		}
+		Safe_bWantsToProne = false;
+	}
+	if(IsCustomMovementMode(CMOVE_Prone) && !bWantsToCrouch)
+	{
+		SetMovementMode(MOVE_Walking);
+	}
+	
+	Super::UpdateCharacterStateBeforeMovement(DeltaSeconds);
+}
+
+void UTalesCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
+{
+	// Super::StartNewPhysics()
+	Super::PhysCustom(deltaTime, Iterations);
+
+	switch (CustomMovementMode)
+	{
+	case CMOVE_Slide:
+		PhysSlide(deltaTime, Iterations);
+		break;
+	case CMOVE_Prone:
+		PhysProne(deltaTime, Iterations);
+		break;
+	default:
+		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
+	}
+}
+
+void UTalesCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
+	// 之前的movement mode退出
+	if(PreviousMovementMode == MOVE_Custom && PreviousCustomMode == CMOVE_Slide) ExitSlide();
+	if(PreviousMovementMode == MOVE_Custom && PreviousCustomMode == CMOVE_Prone) ExitProne();
+
+	// 进入现在的movement mode
+	if(IsCustomMovementMode(CMOVE_Slide)) EnterSlide(PreviousMovementMode, (ECustomMovementMode)PreviousCustomMode);
+	if(IsCustomMovementMode(CMOVE_Prone)) EnterProne(PreviousMovementMode, (ECustomMovementMode)PreviousCustomMode);
+	
+}
+#pragma endregion
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ----------------------------------       Slide Movement Mode      ----------------------------------------
+#pragma region Slide
 void UTalesCharacterMovementComponent::EnterSlide(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
 {
 	bWantsToCrouch = true;
@@ -77,31 +270,6 @@ void UTalesCharacterMovementComponent::ExitSlide()
 	bOrientRotationToMovement = true;
 }
 
-void UTalesCharacterMovementComponent::Server_EnterProne_Implementation()
-{
-	Safe_bWantsToProne = true;
-}
-
-void UTalesCharacterMovementComponent::EnterProne(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
-{
-	bWantsToCrouch = true;
-	if(PrevMode == MOVE_Custom && PrevCustomMode == CMOVE_Slide)
-	{
-		Velocity += Velocity.GetSafeNormal2D() * ProneSlideEnterImpulse;
-	}
-	FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, true, NULL);
-}
-
-bool UTalesCharacterMovementComponent::CanProne() const
-{
-	return IsCustomMovementMode(CMOVE_Slide) || IsMovementMode(MOVE_Walking) && IsCrouching();
-}
-
-void UTalesCharacterMovementComponent::ExitProne()
-{
-}
-
-// Slide
 void UTalesCharacterMovementComponent::PhysSlide(float deltaTime, int32 Iterations)
 {
 	if(deltaTime < MIN_TICK_TIME)
@@ -320,7 +488,34 @@ void UTalesCharacterMovementComponent::PhysSlide(float deltaTime, int32 Iteratio
 	FQuat NewRotation = FRotationMatrix::MakeFromXZ(Velocity.GetSafeNormal2D(), FVector::UpVector).ToQuat();
 	SafeMoveUpdatedComponent(FVector::ZeroVector, NewRotation, false, Hit);
 }
+#pragma endregion
 
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ----------------------------------       Prone Movement Mode      ----------------------------------------
+#pragma region Prone
+void UTalesCharacterMovementComponent::Server_EnterProne_Implementation()
+{
+	Safe_bWantsToProne = true;
+}
+
+void UTalesCharacterMovementComponent::EnterProne(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
+{
+	bWantsToCrouch = true;
+	if(PrevMode == MOVE_Custom && PrevCustomMode == CMOVE_Slide)
+	{
+		Velocity += Velocity.GetSafeNormal2D() * ProneSlideEnterImpulse;
+	}
+	FindFloor(UpdatedComponent->GetComponentLocation(), CurrentFloor, true, NULL);
+}
+
+bool UTalesCharacterMovementComponent::CanProne() const
+{
+	return IsCustomMovementMode(CMOVE_Slide) || IsMovementMode(MOVE_Walking) && IsCrouching();
+}
+
+void UTalesCharacterMovementComponent::ExitProne()
+{
+}
 void UTalesCharacterMovementComponent::PhysProne(float deltaTime, int32 Iterations)
 {
 	if(deltaTime < MIN_TICK_TIME)
@@ -532,194 +727,28 @@ void UTalesCharacterMovementComponent::PhysProne(float deltaTime, int32 Iteratio
 		MaintainHorizontalGroundVelocity();
 	}
 }
+#pragma endregion
 
-void UTalesCharacterMovementComponent::OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation,
-                                                         const FVector& OldVelocity)
+// ---------------------------------------       Trigger        ---------------------------------------------
+#pragma region trigger
+void UTalesCharacterMovementComponent::SprintPressed()
 {
-	Super::OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
-
-	Safe_bPrevWantsToCrouch = bWantsToCrouch;
+	Safe_bWantToSprint = true;
 }
 
-bool UTalesCharacterMovementComponent::IsMovingOnGround() const
+void UTalesCharacterMovementComponent::SprintReleased()
 {
-	return Super::IsMovingOnGround() || IsCustomMovementMode(CMOVE_Slide) || IsCustomMovementMode(CMOVE_Prone);
+	Safe_bWantToSprint = false;
 }
 
-bool UTalesCharacterMovementComponent::CanCrouchInCurrentState() const
+void UTalesCharacterMovementComponent::CrouchPressed()
 {
-	return Super::CanCrouchInCurrentState() && IsMovingOnGround();
+	bWantsToCrouch = !bWantsToCrouch;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle_EnterProne, this, &UTalesCharacterMovementComponent::TryEnterProne, ProneEnterHoldDuration);
 }
 
-float UTalesCharacterMovementComponent::GetMaxSpeed() const
+void UTalesCharacterMovementComponent::CrouchReleased()
 {
-	if(IsMovementMode(MOVE_Walking) && Safe_bWantToSprint && !IsCrouching()) return MaxSprintSpeed;
-	if(MovementMode != MOVE_Custom) return Super::GetMaxSpeed();
-	switch (CustomMovementMode)
-	{
-	case CMOVE_Slide:
-		return MaxSlideSpeed;
-	case CMOVE_Prone:
-		return ProneMaxSpeed;
-	default:
-		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
-		return  -1.f;
-	}
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_EnterProne);
 }
-
-float UTalesCharacterMovementComponent::GetMaxBrakingDeceleration() const
-{
-	if(MovementMode != MOVE_Custom) return Super::GetMaxBrakingDeceleration();
-	
-	switch (CustomMovementMode)
-	{
-	case CMOVE_Slide:
-		return BrakingDecelerationSliding;
-	case CMOVE_Prone:
-		return BrakingDecelerationProne;
-	default:
-		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
-		return  -1.f;
-	}
-}
-
-bool UTalesCharacterMovementComponent::IsMovementMode(EMovementMode InMovementMode) const
-{
-	return InMovementMode == MovementMode;
-}
-
-void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
-{
-	// Slide
-	if(MovementMode == MOVE_Walking && !bWantsToCrouch && Safe_bPrevWantsToCrouch)
-	{
-		if(CanSlide())
-		{
-			SetMovementMode(MOVE_Custom, CMOVE_Slide);
-		}
-	}
-	else if(IsCustomMovementMode(CMOVE_Slide) && !bWantsToCrouch)
-	{
-		SetMovementMode(MOVE_Walking);
-	}
-
-	// Prone
-	if(Safe_bWantsToProne)
-	{
-		if(CanProne())
-		{
-			SetMovementMode(MOVE_Custom, CMOVE_Prone);
-			if(!CharacterOwner->HasAuthority()) Server_EnterProne();
-		}
-		Safe_bWantsToProne = false;
-	}
-	if(IsCustomMovementMode(CMOVE_Prone) && !bWantsToCrouch)
-	{
-		SetMovementMode(MOVE_Walking);
-	}
-	
-	Super::UpdateCharacterStateBeforeMovement(DeltaSeconds);
-}
-
-void UTalesCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
-{
-	// Super::StartNewPhysics()
-	Super::PhysCustom(deltaTime, Iterations);
-
-	switch (CustomMovementMode)
-	{
-	case CMOVE_Slide:
-		PhysSlide(deltaTime, Iterations);
-		break;
-	case CMOVE_Prone:
-		PhysProne(deltaTime, Iterations);
-		break;
-	default:
-		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
-	}
-}
-
-void UTalesCharacterMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
-{
-	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
-	// 之前的movement mode退出
-	if(PreviousMovementMode == MOVE_Custom && PreviousCustomMode == CMOVE_Slide) ExitSlide();
-	if(PreviousMovementMode == MOVE_Custom && PreviousCustomMode == CMOVE_Prone) ExitProne();
-
-	// 进入现在的movement mode
-	if(IsCustomMovementMode(CMOVE_Slide)) EnterSlide(PreviousMovementMode, (ECustomMovementMode)PreviousCustomMode);
-	if(IsCustomMovementMode(CMOVE_Prone)) EnterProne(PreviousMovementMode, (ECustomMovementMode)PreviousCustomMode);
-	
-}
-
-FNetworkPredictionData_Client* UTalesCharacterMovementComponent::GetPredictionData_Client() const
-{
-	check(PawnOwner != nullptr);
-	if(ClientPredictionData == nullptr)
-	{
-		UTalesCharacterMovementComponent* MutableThis = const_cast<UTalesCharacterMovementComponent*>(this);
-		MutableThis->ClientPredictionData = new FNetworkPredictionData_Client_Tales(*this);
-		MutableThis->ClientPredictionData->MaxSmoothNetUpdateDist = 92.f;
-		MutableThis->ClientPredictionData->NoSmoothNetUpdateDist = 140.f;
-	}	
-	return ClientPredictionData;
-}
-
-// /--------------------------------  Saved move_Tales   -----------------------------
-
-bool UTalesCharacterMovementComponent::FSavedmove_Tales::CanCombineWith(const FSavedMovePtr& NewMove,
-                                                                        ACharacter* InCharacter, float MaxDelta) const
-{
-	FSavedmove_Tales* NewTalesMove = static_cast<FSavedmove_Tales*>(NewMove.Get());
-	if(Saved_bWantsToSprint != NewTalesMove->Saved_bWantsToSprint)
-	{
-		return false;
-	}
-	
-	return FSavedMove_Character::CanCombineWith(NewMove, InCharacter, MaxDelta);
-}
-
-void UTalesCharacterMovementComponent::FSavedmove_Tales::Clear()
-{
-	FSavedMove_Character::Clear();
-	Saved_bWantsToSprint = 0;
-}
-
-uint8 UTalesCharacterMovementComponent::FSavedmove_Tales::GetCompressedFlags() const
-{
-	uint8 Result = Super::GetCompressedFlags();
-	if(Saved_bWantsToSprint) Result |= FLAG_Sprint;
-
-	return Result;
-}
-
-void UTalesCharacterMovementComponent::FSavedmove_Tales::SetMoveFor(ACharacter* C, float InDeltaTime,
-	FVector const& NewAccel, FNetworkPredictionData_Client_Character& ClientData)
-{
-	FSavedMove_Character::SetMoveFor(C, InDeltaTime, NewAccel, ClientData);
-	UTalesCharacterMovementComponent* CharacterMovement = Cast<UTalesCharacterMovementComponent>(C->GetCharacterMovement());
-	Saved_bWantsToSprint = CharacterMovement->Safe_bWantToSprint;
-	Saved_bPrevWantsToCrouch = CharacterMovement->Safe_bPrevWantsToCrouch;
-	Saved_bWantsToProne = CharacterMovement->Safe_bWantsToProne;
-}
-
-void UTalesCharacterMovementComponent::FSavedmove_Tales::PrepMoveFor(ACharacter* C)
-{
-	FSavedMove_Character::PrepMoveFor(C);
-
-	UTalesCharacterMovementComponent* CharacterMovement = Cast<UTalesCharacterMovementComponent>(C->GetCharacterMovement());
-	CharacterMovement->Safe_bWantToSprint = Saved_bWantsToSprint;
-	CharacterMovement->Safe_bPrevWantsToCrouch = Saved_bPrevWantsToCrouch;
-	CharacterMovement->Safe_bWantsToProne= Saved_bWantsToProne;
-}
-
-UTalesCharacterMovementComponent::FNetworkPredictionData_Client_Tales::FNetworkPredictionData_Client_Tales(
-	const UCharacterMovementComponent& ClientMovement) : Super(ClientMovement)
-{
-}
-
-FSavedMovePtr UTalesCharacterMovementComponent::FNetworkPredictionData_Client_Tales::AllocateNewMove()
-{
-	Super::AllocateNewMove();
-	return FSavedMovePtr(new FSavedmove_Tales);
-}
+#pragma endregion
