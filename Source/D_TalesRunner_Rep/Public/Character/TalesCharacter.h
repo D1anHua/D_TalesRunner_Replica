@@ -4,6 +4,7 @@
 
 #include "Components/TimelineComponent.h"
 #include "CoreMinimal.h"
+#include "InputAction.h"
 #include "GameFramework/Character.h"
 #include "TalesCharacter.generated.h"
 
@@ -37,6 +38,8 @@ protected:
 	UInputAction* Input_Jump;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* Input_Sprint;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* Input_LookMouse;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<USpringArmComponent> SpringArmComp;
@@ -67,6 +70,11 @@ protected:
 	void MoveFunc(const FInputActionInstance& Instance);
 	void SprintStart(const FInputActionInstance& Instance);
 	void SprintStop(const FInputActionInstance& Instance);
+	void LookMouse(const FInputActionInstance& Instance);
+	
+public:
+	virtual void Jump() override;
+	virtual void StopJumping() override;
 
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
@@ -84,7 +92,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
 	float DefaultAcceleration     = 800.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
-	float DefaultFov				= 120.f;
+	float DefaultFov				= 40.f;
 	// Sprint Setting
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
 	bool  bIsSprint				= false;;
@@ -93,13 +101,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
 	float SprintAcceleration		= 1200.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
-	float SprintFov				= 140.f;
+	float SprintFov				= 45.f;
 
 	//Function to update FOV when Sprint
 public:
 	UPROPERTY(EditAnywhere, Category = "Sprint|Timeline")
 	UCurveFloat* SprintFovChangeFloatCurve;
-	
+
+	bool bPressedTalesJump;
 	
 protected:
 	// Track used for Sprint Fov Change

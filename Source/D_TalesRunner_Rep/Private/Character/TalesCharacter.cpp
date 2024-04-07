@@ -21,6 +21,7 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 
 	TalesCharacterMovementComponent = Cast<UTalesCharacterMovementComponent>(GetCharacterMovement());
+	TalesCharacterMovementComponent->SetIsReplicated(true);
 
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>("SpringArmComp");
 	SpringArmComp->SetupAttachment(RootComponent);
@@ -91,10 +92,13 @@ void ATalesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	// General
 	if(ensureAlways(Input_Move))	 InputComp->BindAction(Input_Move,   ETriggerEvent::Triggered, this, &ATalesCharacter::MoveFunc);
 	if(ensureAlways(Input_Jump))	 InputComp->BindAction(Input_Jump,   ETriggerEvent::Triggered, this, &ATalesCharacter::Jump);
-
+	// if(ensureAlways(Input_Jump))	 InputComp->BindAction(Input_Jump,   ETriggerEvent::Completed, this, &ATalesCharacter::StopJumping);
+	if(ensureAlways(Input_LookMouse))InputComp->BindAction(Input_LookMouse, ETriggerEvent::Triggered, this, &ATalesCharacter::LookMouse);
+	
 	// Sprint while key is held
 	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Started,   this, &ATalesCharacter::SprintStart);
 	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Completed, this, &ATalesCharacter::SprintStop);
+	
 }
 
 
@@ -159,6 +163,28 @@ void ATalesCharacter::SprintStop(const FInputActionInstance& Instance)
 		// JetPackThrusterComp->Deactivate();
 		// JetPackThrusterAudioComp->Stop();
 	}
+}
+
+void ATalesCharacter::LookMouse(const FInputActionInstance& Instance)
+{
+	const FVector2D Value = Instance.GetValue().Get<FVector2D>();
+	AddControllerYawInput(Value.X);
+	AddControllerPitchInput(Value.Y);
+}
+
+void ATalesCharacter::Jump()
+{
+	bPressedTalesJump = true;
+	Super::Jump();
+
+	bPressedJump = false;
+	UE_LOG(LogTemp, Warning, TEXT("Jump is Server: %d"), HasAuthority());
+}
+
+void ATalesCharacter::StopJumping()
+{
+	bPressedTalesJump = false;
+	Super::StopJumping();
 }
 
 void ATalesCharacter::UpdateSprintFov(float TimelineOutput)
