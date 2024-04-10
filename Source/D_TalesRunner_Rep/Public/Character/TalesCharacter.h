@@ -86,11 +86,6 @@ public:
 	
 // TODO: should be private
 protected:
-	// Default(walk) Speed.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
-	float DefaultSpeed			= 400.f;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
-	float DefaultAcceleration     = 800.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Params")
 	float DefaultFov				= 40.f;
 	// Sprint Setting
@@ -117,9 +112,6 @@ protected:
 	void UpdateSprintFov(float TimelineOutput);
 	
 private:
-	// TODO: Change if the entire character file complete.
-	inline void SettingDefaultParams();
-	
 	UPROPERTY()
 	UCameraShakeBase* CurrentSprintShake;
 

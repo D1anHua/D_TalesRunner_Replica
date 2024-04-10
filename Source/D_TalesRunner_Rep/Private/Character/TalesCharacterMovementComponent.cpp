@@ -9,7 +9,7 @@
 #include "Net/UnrealNetwork.h"
 
 // Helper Macros
-#if 0
+#if 1
 float MacroDuration = 2.f;
 #define SLOG(x) GEngine->AddOnScreenDebugMessage(-1, MacroDuration ? MacroDuration : -1.f, FColor::Yellow, x);
 #define POINT(x, c) DrawDebugPoint(GetWorld(), x, 10, c, !MacroDuration, MacroDuration);
@@ -45,6 +45,10 @@ bool UTalesCharacterMovementComponent::FSavedmove_Tales::CanCombineWith(const FS
 	{
 		return false;
 	}
+	if(Saved_bWantsToClimb != NewTalesMove->Saved_bWantsToClimb)
+	{
+		return false;
+	}
 	
 	return FSavedMove_Character::CanCombineWith(NewMove, InCharacter, MaxDelta);
 }
@@ -55,6 +59,7 @@ void UTalesCharacterMovementComponent::FSavedmove_Tales::Clear()
 	Saved_bWantsToSprint = 0;
 	Saved_bWantsToDash = 0;
 	Saved_bPressedZippyJump = 0;
+	Saved_bWantsToClimb = 0;
 
 	Saved_bHadAnimRootMotion = 0;
 	Saved_bTransitionFinished = 0;
@@ -69,6 +74,7 @@ uint8 UTalesCharacterMovementComponent::FSavedmove_Tales::GetCompressedFlags() c
 	if(Saved_bWantsToSprint) Result |= FLAG_Sprint;
 	if(Saved_bWantsToDash)	 Result |= FLAG_Dash;
 	if(Saved_bPressedZippyJump) Result |= FLAG_JumpPressed;
+	if(Saved_bWantsToClimb)  Result |= FLAG_Climb;
 
 	return Result;
 }
@@ -80,6 +86,7 @@ void UTalesCharacterMovementComponent::FSavedmove_Tales::SetMoveFor(ACharacter* 
 	UTalesCharacterMovementComponent* CharacterMovement = Cast<UTalesCharacterMovementComponent>(C->GetCharacterMovement());
 	Saved_bWantsToSprint	  = CharacterMovement->Safe_bWantToSprint;
 	Saved_bWantsToDash		  = CharacterMovement->Safe_bWantsToDash;
+	Saved_bWantsToClimb       = CharacterMovement->Safe_bWantsToClimb;
 	Saved_bPrevWantsToCrouch  = CharacterMovement->Safe_bPrevWantsToCrouch;
 	Saved_bWantsToProne       = CharacterMovement->Safe_bWantsToProne;
 	Saved_bPressedZippyJump	  = CharacterMovement->TalesCharacterOwner->bPressedTalesJump;
@@ -94,6 +101,7 @@ void UTalesCharacterMovementComponent::FSavedmove_Tales::PrepMoveFor(ACharacter*
 	UTalesCharacterMovementComponent* CharacterMovement = Cast<UTalesCharacterMovementComponent>(C->GetCharacterMovement());
 	CharacterMovement->Safe_bWantToSprint      = Saved_bWantsToSprint;
 	CharacterMovement->Safe_bWantsToDash	   = Saved_bWantsToDash;
+	CharacterMovement->Safe_bWantsToClimb      = Saved_bWantsToClimb;
 	CharacterMovement->Safe_bPrevWantsToCrouch = Saved_bPrevWantsToCrouch;
 	CharacterMovement->Safe_bWantsToProne      = Saved_bWantsToProne;
 	CharacterMovement->TalesCharacterOwner->bPressedTalesJump = Saved_bPressedZippyJump;
@@ -120,14 +128,13 @@ FSavedMovePtr UTalesCharacterMovementComponent::FNetworkPredictionData_Client_Ta
 
 #pragma endregion
 
-
-
 // ///////////////////////////////////////////////////////////////////////////////////////////////////
 // TalesCharacterMovementComponent
 // ///////////////////////////////////////////////////////////////////////////////////////////////////
 UTalesCharacterMovementComponent::UTalesCharacterMovementComponent()
 {
 	NavAgentProps.bCanCrouch = true;
+	CapsuleHalfHeightCrouch = GetCrouchedHalfHeight();
 }
 
 void UTalesCharacterMovementComponent::InitializeComponent()
@@ -148,7 +155,10 @@ bool UTalesCharacterMovementComponent::IsMovementMode(EMovementMode InMovementMo
 
 float UTalesCharacterMovementComponent::GetMaxSpeed() const
 {
+	// Set Sprint Max Speed
 	if(IsMovementMode(MOVE_Walking) && Safe_bWantToSprint && !IsCrouching()) return MaxSprintSpeed;
+
+	// Set Other Movement mode's Max Speed
 	if(MovementMode != MOVE_Custom) return Super::GetMaxSpeed();
 	switch (CustomMovementMode)
 	{
@@ -156,6 +166,8 @@ float UTalesCharacterMovementComponent::GetMaxSpeed() const
 		return MaxSlideSpeed;
 	case CMOVE_Prone:
 		return ProneMaxSpeed;
+	case CMOVE_Climb:
+		return MaxClimbSpeed;
 	default:
 		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
 		return  -1.f;
@@ -172,6 +184,8 @@ float UTalesCharacterMovementComponent::GetMaxBrakingDeceleration() const
 		return BrakingDecelerationSliding;
 	case CMOVE_Prone:
 		return BrakingDecelerationProne;
+	case CMOVE_Climb:
+		return BrakingDecelerationClimbing;
 	default:
 		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
 		return  -1.f;
@@ -207,7 +221,8 @@ void UTalesCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 	Super::UpdateFromCompressedFlags(Flags);
 
 	Safe_bWantToSprint = (Flags & FSavedmove_Tales::FLAG_Sprint) != 0;
-	Safe_bWantsToDash = (Flags & FSavedmove_Tales::FLAG_Dash) != 0;
+	Safe_bWantsToDash  = (Flags & FSavedmove_Tales::FLAG_Dash) != 0;
+	Safe_bWantsToClimb = ((Flags & FSavedmove_Tales::FLAG_Climb) != 0);
 }
 
 void UTalesCharacterMovementComponent::OnMovementUpdated(float DeltaSeconds, const FVector& OldLocation,
@@ -216,13 +231,30 @@ void UTalesCharacterMovementComponent::OnMovementUpdated(float DeltaSeconds, con
 	Super::OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
 
 	Safe_bPrevWantsToCrouch = bWantsToCrouch;
-
-	// GEngine->AddOnScreenDebugMessage(-1, -1.f, FColor::Yellow, FString::Printf(TEXT("Num RMSs: %d, arms: %d, rms: %d"), CurrentRootMotion.RootMotionSources.Num(), HasAnimRootMotion(), HasRootMotionSources()));
 }
 
 void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
 {
 	// Slide
+	// 但是: 为了避免if 后面的语句重复执行, 有关bWantsToCrouch的语句全部写在一个If-Else里面
+	if(CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)
+	{
+		if(Safe_bWantsToClimb && (MovementMode == MOVE_Walking || MovementMode == MOVE_Falling))
+		{
+			if(CanClimb())
+			{
+				SetMovementMode(MOVE_Custom, CMOVE_Climb);
+			}
+			else
+			{
+				Safe_bWantsToClimb = false;
+			}
+		}
+		else if(IsCustomMovementMode(CMOVE_Climb) && !Safe_bWantsToClimb)
+		{
+			SetMovementMode(MOVE_Falling);
+		}
+	}
 	if(MovementMode == MOVE_Walking && !bWantsToCrouch && Safe_bPrevWantsToCrouch)
 	{
 		if(CanSlide())
@@ -234,6 +266,7 @@ void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float 
 	{
 		SetMovementMode(MOVE_Walking);
 	}
+
 
 	// Prone
 	if(Safe_bWantsToProne)
@@ -338,6 +371,9 @@ void UTalesCharacterMovementComponent::PhysCustom(float deltaTime, int32 Iterati
 	case CMOVE_Prone:
 		PhysProne(deltaTime, Iterations);
 		break;
+	case CMOVE_Climb:
+		PhysClimb(deltaTime, Iterations);
+		break;
 	default:
 		UE_LOG(LogTemp, Fatal, TEXT("Invalid Movement Mode"))
 	}
@@ -349,10 +385,12 @@ void UTalesCharacterMovementComponent::OnMovementModeChanged(EMovementMode Previ
 	// 之前的movement mode退出
 	if(PreviousMovementMode == MOVE_Custom && PreviousCustomMode == CMOVE_Slide) ExitSlide();
 	if(PreviousMovementMode == MOVE_Custom && PreviousCustomMode == CMOVE_Prone) ExitProne();
+	if(PreviousMovementMode == MOVE_Custom && PreviousCustomMode == CMOVE_Climb) ExitClimb();
 
 	// 进入现在的movement mode
 	if(IsCustomMovementMode(CMOVE_Slide)) EnterSlide(PreviousMovementMode, (ECustomMovementMode)PreviousCustomMode);
 	if(IsCustomMovementMode(CMOVE_Prone)) EnterProne(PreviousMovementMode, (ECustomMovementMode)PreviousCustomMode);
+	if(IsCustomMovementMode(CMOVE_Climb)) EnterClimb(PreviousMovementMode, (ECustomMovementMode)PreviousCustomMode);
 	
 }
 #pragma endregion
@@ -384,7 +422,6 @@ void UTalesCharacterMovementComponent::OnRep_TallMantle()
 	CharacterOwner->PlayAnimMontage(ProxyTallMantleMontage);
 }
 #pragma endregion
-
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ----------------------------------       Slide Movement Mode      ----------------------------------------
@@ -661,7 +698,9 @@ bool UTalesCharacterMovementComponent::CanProne() const
 
 void UTalesCharacterMovementComponent::ExitProne()
 {
+	
 }
+
 void UTalesCharacterMovementComponent::PhysProne(float deltaTime, int32 Iterations)
 {
 	if(deltaTime < MIN_TICK_TIME)
@@ -1083,16 +1122,163 @@ float UTalesCharacterMovementComponent::CapHH() const
 	return CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 }
 #pragma endregion
+
+
+// ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ----------------------------------       Climb Movement Mode      ----------------------------------------
+#pragma region Climbe
+void UTalesCharacterMovementComponent::EnterClimb(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
+{
+	SLOG("Start Climbing");
+	// Rotation Capsule For Climb
+	// FHitResult Hit;
+	// FQuat NewRotation = FRotationMatrix::MakeFromXZ(-FrontHit.Normal, FVector::UpVector).ToQuat();
+	// SafeMoveUpdatedComponent(FVector::ZeroVector, NewRotation, false, Hit);
+	bOrientRotationToMovement = false;
+}
+
+void UTalesCharacterMovementComponent::ExitClimb()
+{
+	Safe_bWantsToClimb = false;	
+	bOrientRotationToMovement = true;
+
+	FHitResult Hit;
+	const FRotator DirtyRotation = UpdatedComponent->GetComponentRotation();
+	const FQuat CleanStandRotation = FRotator(0.f, DirtyRotation.Yaw, 0.f).Quaternion();
+	SafeMoveUpdatedComponent(FVector::ZeroVector, CleanStandRotation, false, Hit);
+}
+
+bool UTalesCharacterMovementComponent::CanClimb() const
+{
+	// TraceClimbableSurfaces()
+	// 这里是有一些问题的
+	const FVector StartOffset = UpdatedComponent->GetForwardVector() * (CapR() - 1.f);
+	const FVector Start = UpdatedComponent->GetComponentLocation() + StartOffset;
+	const FVector End = Start + UpdatedComponent->GetForwardVector();
+	TArray<FHitResult> CapsuleTraceHitResults;
+	FCollisionShape CapShape = FCollisionShape::MakeCapsule(CapR() * 1.2, CapHH());
+	if(!GetWorld()->SweepMultiByProfile(CapsuleTraceHitResults, Start, End, FQuat::Identity , "BlockAll", CapShape, TalesCharacterOwner->GetIgnoreCharacterParams()))
+	{
+CAPSULE(Start, FColor::Red)
+		return false;
+	}
+
+	// UseLineTrace to Search high
+	FHitResult FrontHit;
+	float TraceStartOffset = 30.f;
+	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
+	const FVector EyeHeightOffset = UpdatedComponent->GetUpVector() * (CharacterOwner->BaseEyeHeight + TraceStartOffset);
+	const FVector LineStart = ComponentLocation + EyeHeightOffset;
+	if(!GetWorld()->LineTraceSingleByProfile(FrontHit, LineStart, LineStart + UpdatedComponent->GetForwardVector() * ClimbReachDistance, "BlockAll", TalesCharacterOwner->GetIgnoreCharacterParams()))
+	{
+LINE(LineStart, LineStart + UpdatedComponent->GetForwardVector() * ClimbReachDistance, FColor::Red);
+		return false;
+	}
+	if(!FrontHit.IsValidBlockingHit()) return false;
+
+	return true;
+}
+
+void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iterations)
+{
+	if (deltaTime < MIN_TICK_TIME)
+	{
+		return;
+	}
+	if (!CharacterOwner || (!CharacterOwner->Controller && !bRunPhysicsWithNoController && !HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity() && (CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)))
+	{
+		Acceleration = FVector::ZeroVector;
+		Velocity = FVector::ZeroVector;
+		return;
+	}
+
+	// Perform the move
+	bJustTeleported = false;
+	Iterations++;
+	
+	const FVector StartOffset = UpdatedComponent->GetForwardVector() * 30.f;
+	const FVector Start = UpdatedComponent->GetComponentLocation() + StartOffset;
+	const FVector End = Start + UpdatedComponent->GetForwardVector();
+	TArray<FHitResult> CapsuleTraceHitResults;
+	FCollisionShape CapShape = FCollisionShape::MakeCapsule(50.f, 72.f);
+	GetWorld()->SweepMultiByProfile(CapsuleTraceHitResults, Start, End, FQuat::Identity , "BlockAll", CapShape, TalesCharacterOwner->GetIgnoreCharacterParams());
+	if(CapsuleTraceHitResults.IsEmpty())
+	{
+		SetMovementMode(MOVE_Falling);
+		StartNewPhysics(deltaTime, Iterations);
+		return;
+	}
+
+	// ProcessClimableSurfaceInfo
+	FVector CurrentClimbableSurfaceLocation = FVector::ZeroVector;
+	FVector CurrentClimbablefaceNormal = FVector::ZeroVector;
+	for(const FHitResult& TraceHitResult : CapsuleTraceHitResults)
+	{
+		CurrentClimbableSurfaceLocation += TraceHitResult.ImpactPoint;
+		CurrentClimbablefaceNormal += TraceHitResult.ImpactNormal;
+	}
+	
+	CurrentClimbableSurfaceLocation /= CapsuleTraceHitResults.Num();
+	CurrentClimbablefaceNormal = CurrentClimbablefaceNormal.GetSafeNormal();
+
+	// Check we should exit Climb
+	const float DotResult = FVector::DotProduct(CurrentClimbablefaceNormal, FVector::UpVector);
+
+	if(DotResult >= FMath::Cos(PI / 3.0))
+	{
+		SetMovementMode(MOVE_Falling);
+		StartNewPhysics(deltaTime, Iterations);
+		return;
+	}
+
+	RestorePreAdditiveRootMotionVelocity();
+
+	// mapping Acceleration
+	Acceleration.Z = 0.f;
+	MacroDuration = 1.f;
+	Acceleration = Acceleration.RotateAngleAxis(90.f, -UpdatedComponent->GetRightVector());
+	if(!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+	{
+		CalcVelocity(deltaTime, 0.f, true, GetMaxBrakingDeceleration());
+		Velocity = FVector::VectorPlaneProject(Velocity, CurrentClimbablefaceNormal);
+	}
+
+	ApplyRootMotionToVelocity(deltaTime);
+	
+	FVector OldLocation = UpdatedComponent->GetComponentLocation();
+	const FVector Adjusted = Velocity * deltaTime;
+	const FQuat CurrentQuat = UpdatedComponent->GetComponentQuat();
+	const FQuat TargetQuat = FRotationMatrix::MakeFromX(-CurrentClimbablefaceNormal).ToQuat();
+	FQuat NewRotation = FMath::QInterpTo(CurrentQuat, TargetQuat, deltaTime, 5.f);
+	FHitResult Hit(1.f);
+	SafeMoveUpdatedComponent(Adjusted, NewRotation, true, Hit);
+	if(Hit.Time < 1.f)
+	{
+		HandleImpact(Hit, deltaTime, Adjusted);
+		SlideAlongSurface(Adjusted, (1.f - Hit.Time), Hit.Normal, Hit, true);
+	}
+
+	if(!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
+	{
+		Velocity = (UpdatedComponent->GetComponentLocation() - OldLocation) / deltaTime;
+	}
+
+	// Snap Movement to Climbable Surfaces
+	const FVector ProjectedCharacterToSurface = (CurrentClimbableSurfaceLocation - UpdatedComponent->GetComponentLocation()).ProjectOnTo(UpdatedComponent->GetForwardVector());
+	const FVector SnapVector = -CurrentClimbablefaceNormal * ProjectedCharacterToSurface.Length();
+	UpdatedComponent->MoveComponent(SnapVector * deltaTime * GetMaxSpeed(), UpdatedComponent->GetComponentQuat(), true);
+}
+#pragma endregion
 // ---------------------------------------       Trigger        ---------------------------------------------
 #pragma region trigger
 void UTalesCharacterMovementComponent::SprintPressed()
 {
-	Safe_bWantToSprint = true;
+	Safe_bWantToSprint = !Safe_bWantToSprint;
 }
 
 void UTalesCharacterMovementComponent::SprintReleased()
 {
-	Safe_bWantToSprint = false;
+	// Safe_bWantToSprint = false;
 }
 
 void UTalesCharacterMovementComponent::CrouchPressed()
@@ -1123,5 +1309,14 @@ void UTalesCharacterMovementComponent::DashReleased()
 {
 	GetWorld()->GetTimerManager().ClearTimer(TimerHandle_DashCooldown);
 	Safe_bWantsToDash = false;
+}
+
+void UTalesCharacterMovementComponent::ClimbPressed()
+{
+	Safe_bWantsToClimb = true;
+}
+
+void UTalesCharacterMovementComponent::ClimbReleased()
+{
 }
 #pragma endregion

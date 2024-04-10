@@ -44,8 +44,6 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	// JetPackThrusterComp->SetupAttachment(JetPackComp);
 	//
 	// JetPackThrusterAudioComp = CreateDefaultSubobject<UAudioComponent>("JetPackSFX");
-	// TODO: Params Setting
-	SettingDefaultParams();
 }
 
 // Called when the game starts or when spawned
@@ -210,13 +208,5 @@ void ATalesCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-}
-
-// TODO: Delete later
-void ATalesCharacter::SettingDefaultParams()
-{
-	GetCharacterMovement()->MaxWalkSpeed = DefaultSpeed;
-	GetCharacterMovement()->MaxAcceleration = DefaultAcceleration;
-	CameraComp->SetFieldOfView(DefaultFov);
 }
 

@@ -18,6 +18,7 @@ enum ECustomMovementMode
 	CMOVE_None			UMETA(Hidden),
 	CMOVE_Slide			UMETA(DisplayName = "Slide"),
 	CMOVE_Prone			UMETA(DisplayName = "Prone"),
+	CMOVE_Climb         UMETA(DisplayName = "Climb"),
 	CMOVE_Max			UMETA(Hidden),
 };
 
@@ -34,6 +35,8 @@ private:
 	//! Sprint_MaxWalkSpeed
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Speed")
 	float MaxSprintSpeed = 750.f;
+	// Just Save Crouch half height
+	float CapsuleHalfHeightCrouch;
 
 	//! Slide Parameter
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Slide")
@@ -95,15 +98,24 @@ private:
 	// @TODO Really need ?	
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Mantle")
 	uint8 MantleScanNumber = 6;
+
+	// Climb	
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	float MaxClimbSpeed = 150.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	float BrakingDecelerationClimbing = 1000.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	float ClimbReachDistance = 200.f;
 	
 	UPROPERTY(Transient)
 	ATalesCharacter* TalesCharacterOwner;
 	
 	//! Sprint begin Logical ---- network safely
 	bool Safe_bWantToSprint;
-	bool Safe_bPrevWantsToCrouch;
 	bool Safe_bWantsToProne;
 	bool Safe_bWantsToDash;
+	bool Safe_bWantsToClimb;
+	bool Safe_bPrevWantsToCrouch;
 	bool Safe_bHadAnimRootMotion;
 	bool Safe_bTransitionFinished;
 	
@@ -122,7 +134,6 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_DashStart) bool Proxy_bDashStart;
 	UPROPERTY(ReplicatedUsing = OnRep_ShortMantle) bool Proxy_bShortMantle;
 	UPROPERTY(ReplicatedUsing = OnRep_TallMantle) bool Proxy_bTallMantle;
-
 	// Delegates
 	UPROPERTY(BlueprintAssignable) FDashStartDelegate DashStartDelegate;
 
@@ -140,6 +151,10 @@ public:
 	virtual void InitializeComponent() override;
 
 	// Helper Function
+	UFUNCTION(BlueprintPure) bool IsClimbing() const { return IsCustomMovementMode(CMOVE_Climb); }
+	UFUNCTION(BlueprintPure) bool IsSlide() const { return IsCustomMovementMode(CMOVE_Slide); }
+	UFUNCTION(BlueprintPure) bool IsProne() const { return IsCustomMovementMode(CMOVE_Prone); }
+	
 	UFUNCTION(BlueprintPure)
 	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
 	UFUNCTION(BlueprintPure)
@@ -187,6 +202,12 @@ private:
 	bool TryMantle();
 	FVector GetMantleStartLocation(FHitResult FrontHit, FHitResult SurfaceHit, bool bTallMantle) const;
 
+	// --------------------------------------    Climb    ------------------------------------------------
+	void EnterClimb(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
+	void ExitClimb();
+	bool CanClimb() const;
+	void PhysClimb(float deltaTime, int32 Iterations);
+	
 private:
 	bool IsServer() const;
 	float CapR() const;
@@ -203,7 +224,7 @@ public:
 		{
 			FLAG_Sprint    = 0x10,
 			FLAG_Dash      = 0x20,
-			FLAG_Custom_2  = 0x40,
+			FLAG_Climb     = 0x40,
 			FLAG_Custom_3  = 0x80,
 		};
 		// :用来说明这个值只占一位
@@ -211,6 +232,7 @@ public:
 		uint8 Saved_bWantsToSprint : 1;
 		uint8 Saved_bWantsToDash   : 1;
 		uint8 Saved_bPressedZippyJump : 1;
+		uint8 Saved_bWantsToClimb : 1;
 
 		//! To Save Some Variables
 		uint8 Saved_bHadAnimRootMotion : 1;
@@ -250,6 +272,10 @@ public:
 	void DashPressed();
 	UFUNCTION(BlueprintCallable)
 	void DashReleased();
+	UFUNCTION(BlueprintCallable)
+	void ClimbPressed();
+	UFUNCTION(BlueprintCallable)
+	void ClimbReleased();
 };
 
 
