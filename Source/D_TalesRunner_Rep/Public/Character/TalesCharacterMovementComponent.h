@@ -6,6 +6,7 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDashStartDelegate);
 
 class ATalesCharacter;
+class UTalesCharacterAnimInstance;
 /*!
  * @name ECustomMovementMode
  * My Custom Movement Mode
@@ -106,7 +107,18 @@ private:
 	float BrakingDecelerationClimbing = 1000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
 	float ClimbReachDistance = 200.f;
-	
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	float ClimbDownWalkableSurfaceTraceOffset = 30.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	float ClimbDownLedgeTraceOffset = 80.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	UAnimMontage* TransitionClimbUpMontage;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	UAnimMontage* TransitionClimbDownMontage;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	UAnimMontage* OutClimbMontage;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	UAnimMontage* ProxyClimbStartMontage;
 	UPROPERTY(Transient)
 	ATalesCharacter* TalesCharacterOwner;
 	
@@ -118,6 +130,7 @@ private:
 	bool Safe_bPrevWantsToCrouch;
 	bool Safe_bHadAnimRootMotion;
 	bool Safe_bTransitionFinished;
+	bool Safe_bClimbTransitionFinished;
 	
 
 	float DashStartTime;
@@ -128,12 +141,14 @@ private:
 	UAnimMontage* TransitionQueuedMontage;
 	float TransitionQueuedMontageSpeed;
 	int TransitionRMS_ID;
+	FString MontageName;
 
 public:
 	// Replicated
 	UPROPERTY(ReplicatedUsing = OnRep_DashStart) bool Proxy_bDashStart;
 	UPROPERTY(ReplicatedUsing = OnRep_ShortMantle) bool Proxy_bShortMantle;
 	UPROPERTY(ReplicatedUsing = OnRep_TallMantle) bool Proxy_bTallMantle;
+	UPROPERTY(ReplicatedUsing = OnRep_ClimbStart) bool Proxy_bClimbStart;
 	// Delegates
 	UPROPERTY(BlueprintAssignable) FDashStartDelegate DashStartDelegate;
 
@@ -143,13 +158,18 @@ private:
 	UFUNCTION() void OnRep_DashStart();
 	UFUNCTION() void OnRep_ShortMantle();
 	UFUNCTION() void OnRep_TallMantle();
+	UFUNCTION() void OnRep_ClimbStart();
 	
 
 public:
 	// Initial Function
 	UTalesCharacterMovementComponent();
 	virtual void InitializeComponent() override;
-
+	virtual void BeginPlay() override;
+	
+	UPROPERTY()
+	UAnimInstance* OwningPlayerAnimInstace;
+	
 	// Helper Function
 	UFUNCTION(BlueprintPure) bool IsClimbing() const { return IsCustomMovementMode(CMOVE_Climb); }
 	UFUNCTION(BlueprintPure) bool IsSlide() const { return IsCustomMovementMode(CMOVE_Slide); }
@@ -159,6 +179,9 @@ public:
 	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
 	UFUNCTION(BlueprintPure)
 	bool IsMovementMode(EMovementMode InMovementMode) const;
+
+	UFUNCTION(BlueprintPure)
+	FVector GetUnRotatedClimbVelocity() const;
 
 	virtual bool IsMovingOnGround() const override;
 	virtual bool CanCrouchInCurrentState() const override;
@@ -205,8 +228,11 @@ private:
 	// --------------------------------------    Climb    ------------------------------------------------
 	void EnterClimb(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
 	void ExitClimb();
-	bool CanClimb() const;
+	bool CanClimbUP();
+	bool CanClimbDown();
 	void PhysClimb(float deltaTime, int32 Iterations);
+	UFUNCTION()
+	void OnClimbMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	
 private:
 	bool IsServer() const;
@@ -239,6 +265,7 @@ public:
 		uint8 Saved_bTransitionFinished : 1;
 		uint8 Saved_bPrevWantsToCrouch : 1;
 		uint8 Saved_bWantsToProne      : 1;
+		uint8 Saved_bClimbTransitionFinished : 1;
 
 		FSavedmove_Tales();
 		virtual bool CanCombineWith(const FSavedMovePtr& NewMove, ACharacter* InCharacter, float MaxDelta) const override;

@@ -6,6 +6,7 @@
 #include "Character/TalesCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
 
 // Helper Macros
@@ -66,6 +67,7 @@ void UTalesCharacterMovementComponent::FSavedmove_Tales::Clear()
 	
 	Saved_bWantsToProne = 0;
 	Saved_bPrevWantsToCrouch = 0;
+	Saved_bClimbTransitionFinished = 0;
 }
 
 uint8 UTalesCharacterMovementComponent::FSavedmove_Tales::GetCompressedFlags() const
@@ -92,6 +94,7 @@ void UTalesCharacterMovementComponent::FSavedmove_Tales::SetMoveFor(ACharacter* 
 	Saved_bPressedZippyJump	  = CharacterMovement->TalesCharacterOwner->bPressedTalesJump;
 	Saved_bHadAnimRootMotion  = CharacterMovement->Safe_bHadAnimRootMotion;
 	Saved_bTransitionFinished = CharacterMovement->Safe_bTransitionFinished;
+	Saved_bClimbTransitionFinished = CharacterMovement->Safe_bClimbTransitionFinished;
 }
 
 void UTalesCharacterMovementComponent::FSavedmove_Tales::PrepMoveFor(ACharacter* C)
@@ -108,6 +111,7 @@ void UTalesCharacterMovementComponent::FSavedmove_Tales::PrepMoveFor(ACharacter*
 
 	CharacterMovement->Safe_bTransitionFinished = Saved_bTransitionFinished;
 	CharacterMovement->Safe_bHadAnimRootMotion  = Saved_bHadAnimRootMotion;
+	CharacterMovement->Safe_bClimbTransitionFinished = Saved_bClimbTransitionFinished;
 }
 
 #pragma endregion
@@ -143,6 +147,18 @@ void UTalesCharacterMovementComponent::InitializeComponent()
 	TalesCharacterOwner = Cast<ATalesCharacter>(GetOwner());
 }
 
+void UTalesCharacterMovementComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	OwningPlayerAnimInstace = CharacterOwner->GetMesh()->GetAnimInstance();
+
+	if(OwningPlayerAnimInstace)
+	{
+		// OwningPlayerAnimInstace->OnMontageEnded.AddDynamic(this, &UTalesCharacterMovementComponent::OnClimbMontageEnded);
+		OwningPlayerAnimInstace->OnMontageBlendingOut.AddDynamic(this, &UTalesCharacterMovementComponent::OnClimbMontageEnded);
+	}
+}
+
 bool UTalesCharacterMovementComponent::IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const
 {
 	return MovementMode == MOVE_Custom && CustomMovementMode == InCustomMocementMode;
@@ -151,6 +167,11 @@ bool UTalesCharacterMovementComponent::IsCustomMovementMode(ECustomMovementMode 
 bool UTalesCharacterMovementComponent::IsMovementMode(EMovementMode InMovementMode) const
 {
 	return InMovementMode == MovementMode;
+}
+
+FVector UTalesCharacterMovementComponent::GetUnRotatedClimbVelocity() const
+{
+	return UKismetMathLibrary::Quat_UnrotateVector(UpdatedComponent->GetComponentQuat(), Velocity);
 }
 
 float UTalesCharacterMovementComponent::GetMaxSpeed() const
@@ -235,18 +256,23 @@ void UTalesCharacterMovementComponent::OnMovementUpdated(float DeltaSeconds, con
 
 void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float DeltaSeconds)
 {
-	// Slide
+	// Climb
 	// 但是: 为了避免if 后面的语句重复执行, 有关bWantsToCrouch的语句全部写在一个If-Else里面
 	if(CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)
 	{
 		if(Safe_bWantsToClimb && (MovementMode == MOVE_Walking || MovementMode == MOVE_Falling))
 		{
-			if(CanClimb())
+			if(!Safe_bClimbTransitionFinished && (CanClimbUP() || CanClimbDown()))
+			{
+				Safe_bWantsToClimb = false;
+			}
+			else if(Safe_bClimbTransitionFinished)
 			{
 				SetMovementMode(MOVE_Custom, CMOVE_Climb);
 			}
 			else
 			{
+				// 用来解决CanClimb()失败的情况
 				Safe_bWantsToClimb = false;
 			}
 		}
@@ -255,6 +281,8 @@ void UTalesCharacterMovementComponent::UpdateCharacterStateBeforeMovement(float 
 			SetMovementMode(MOVE_Falling);
 		}
 	}
+
+	// Slide
 	if(MovementMode == MOVE_Walking && !bWantsToCrouch && Safe_bPrevWantsToCrouch)
 	{
 		if(CanSlide())
@@ -346,8 +374,16 @@ void UTalesCharacterMovementComponent::UpdateCharacterStateAfterMovement(float D
 
 	if(!HasAnimRootMotion() && Safe_bHadAnimRootMotion && IsMovementMode(MOVE_Flying))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Ending Anim Root Motion"))
-		SetMovementMode(MOVE_Walking);
+		if(Safe_bHadAnimRootMotion)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Ending Anim Root Motion"))
+			SetMovementMode(MOVE_Walking);
+		}else if(MontageName == "ClimbOut")
+		{
+			SLOG("Has Quit Climb out Montage");
+			StopMovementImmediately();
+			SetMovementMode(MOVE_Walking);
+		}
 	}
 
 	if(GetRootMotionSourceByID(TransitionRMS_ID) && GetRootMotionSourceByID(TransitionRMS_ID)->Status.HasFlag(ERootMotionSourceStatusFlags::Finished))
@@ -404,6 +440,7 @@ void UTalesCharacterMovementComponent::GetLifetimeReplicatedProps(TArray<FLifeti
 	DOREPLIFETIME_CONDITION(UTalesCharacterMovementComponent, Proxy_bDashStart, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(UTalesCharacterMovementComponent, Proxy_bShortMantle, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(UTalesCharacterMovementComponent, Proxy_bTallMantle, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(UTalesCharacterMovementComponent, Proxy_bClimbStart, COND_SkipOwner);
 }
 
 void UTalesCharacterMovementComponent::OnRep_DashStart()
@@ -420,6 +457,11 @@ void UTalesCharacterMovementComponent::OnRep_ShortMantle()
 void UTalesCharacterMovementComponent::OnRep_TallMantle()
 {
 	CharacterOwner->PlayAnimMontage(ProxyTallMantleMontage);
+}
+
+void UTalesCharacterMovementComponent::OnRep_ClimbStart()
+{
+	CharacterOwner->PlayAnimMontage(ProxyClimbStartMontage);
 }
 #pragma endregion
 
@@ -954,8 +996,8 @@ bool UTalesCharacterMovementComponent::TryMantle()
 
 	SLOG("Start Mantle Attemp")
 	
-		// Check Front Face
-		FHitResult FrontHit;
+	// Check Front Face
+	FHitResult FrontHit;
 	float CheckDistance = FMath::Clamp(Velocity | ForwardVec, CapR() + 30, MantleMaxDistance);
 	FVector FrontStart = BaseLoc + FVector::UpVector * (MaxStepHeight - 1);
 	for(int i = 0; i < MantleScanNumber; ++i)
@@ -1126,7 +1168,7 @@ float UTalesCharacterMovementComponent::CapHH() const
 
 // ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ----------------------------------       Climb Movement Mode      ----------------------------------------
-#pragma region Climbe
+#pragma region Climb
 void UTalesCharacterMovementComponent::EnterClimb(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode)
 {
 	SLOG("Start Climbing");
@@ -1134,11 +1176,13 @@ void UTalesCharacterMovementComponent::EnterClimb(EMovementMode PrevMode, ECusto
 	// FHitResult Hit;
 	// FQuat NewRotation = FRotationMatrix::MakeFromXZ(-FrontHit.Normal, FVector::UpVector).ToQuat();
 	// SafeMoveUpdatedComponent(FVector::ZeroVector, NewRotation, false, Hit);
+	Velocity = FVector::Zero();
 	bOrientRotationToMovement = false;
 }
 
 void UTalesCharacterMovementComponent::ExitClimb()
 {
+	Safe_bClimbTransitionFinished = false;
 	Safe_bWantsToClimb = false;	
 	bOrientRotationToMovement = true;
 
@@ -1148,7 +1192,7 @@ void UTalesCharacterMovementComponent::ExitClimb()
 	SafeMoveUpdatedComponent(FVector::ZeroVector, CleanStandRotation, false, Hit);
 }
 
-bool UTalesCharacterMovementComponent::CanClimb() const
+bool UTalesCharacterMovementComponent::CanClimbUP()
 {
 	// TraceClimbableSurfaces()
 	// 这里是有一些问题的
@@ -1161,6 +1205,7 @@ bool UTalesCharacterMovementComponent::CanClimb() const
 	{
 CAPSULE(Start, FColor::Red)
 		return false;
+		
 	}
 
 	// UseLineTrace to Search high
@@ -1176,7 +1221,47 @@ LINE(LineStart, LineStart + UpdatedComponent->GetForwardVector() * ClimbReachDis
 	}
 	if(!FrontHit.IsValidBlockingHit()) return false;
 
+	if(ensureAlways(TransitionClimbUpMontage) && CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)
+	{
+		OwningPlayerAnimInstace->Montage_Play(TransitionClimbUpMontage);
+		if(IsServer())
+		{
+			// Proxy_bClimbStart = !Proxy_bClimbStart;
+		}
+	}
 	return true;
+}
+
+bool UTalesCharacterMovementComponent::CanClimbDown()
+{
+	// LineTrace To Get Normal
+	if(IsFalling()) return false;
+	
+	FVector WalkableSurfaceTraceStart = UpdatedComponent->GetComponentLocation() + UpdatedComponent->GetForwardVector() * ClimbDownWalkableSurfaceTraceOffset;
+	FVector WalkableSurfaceTraceEnd = WalkableSurfaceTraceStart - UpdatedComponent->GetUpVector() * 100.f;
+	FHitResult WalkableSurfaceHit;
+	GetWorld()->LineTraceSingleByProfile(WalkableSurfaceHit, WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd, "BlockAll", TalesCharacterOwner->GetIgnoreCharacterParams());
+	LINE(WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd, FColor::Blue);
+
+	WalkableSurfaceTraceStart = WalkableSurfaceHit.TraceStart + UpdatedComponent->GetForwardVector() * ClimbDownLedgeTraceOffset;
+	WalkableSurfaceTraceEnd = WalkableSurfaceTraceStart - UpdatedComponent->GetUpVector() * CapHH() * 4.2f;
+	FHitResult LedgeTraceHit;
+	GetWorld()->LineTraceSingleByProfile(LedgeTraceHit, WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd, "BlockAll", TalesCharacterOwner->GetIgnoreCharacterParams());
+	LINE(WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd, FColor::Red);
+	if(WalkableSurfaceHit.bBlockingHit && !LedgeTraceHit.bBlockingHit)
+	{
+		if(ensureAlways(TransitionClimbDownMontage) && CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)
+		{
+			SafeMoveUpdatedComponent(UpdatedComponent->GetForwardVector() * ClimbDownWalkableSurfaceTraceOffset, UpdatedComponent->GetComponentRotation(), false, WalkableSurfaceHit);
+			OwningPlayerAnimInstace->Montage_Play(TransitionClimbDownMontage);
+			if(IsServer())
+			{
+				// Proxy_bClimbStart = !Proxy_bClimbStart;
+			}
+		}
+		return true;
+	}
+	return false;	
 }
 
 void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iterations)
@@ -1196,11 +1281,30 @@ void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iteratio
 	bJustTeleported = false;
 	Iterations++;
 	
-	const FVector StartOffset = UpdatedComponent->GetForwardVector() * 30.f;
-	const FVector Start = UpdatedComponent->GetComponentLocation() + StartOffset;
-	const FVector End = Start + UpdatedComponent->GetForwardVector();
+	FVector StartOffset = -1 * UpdatedComponent->GetUpVector();
+	FVector Start = UpdatedComponent->GetComponentLocation() + StartOffset * 50.f;
+	FVector End = Start + StartOffset;
 	TArray<FHitResult> CapsuleTraceHitResults;
 	FCollisionShape CapShape = FCollisionShape::MakeCapsule(50.f, 72.f);
+	GetWorld()->SweepMultiByProfile(CapsuleTraceHitResults, Start, End, FQuat::Identity, "BlockAll", CapShape, TalesCharacterOwner->GetIgnoreCharacterParams());
+	if(!CapsuleTraceHitResults.IsEmpty())
+	{
+		for(auto& Hit : CapsuleTraceHitResults)
+		{
+			if(GetUnRotatedClimbVelocity().Z < -10.f && FVector::Parallel(Hit.ImpactNormal, FVector::UpVector))
+			{
+				SetMovementMode(MOVE_Falling);
+				StartNewPhysics(deltaTime, Iterations);
+				return;
+			}
+		}
+	}
+
+	// Check has reached floor
+	StartOffset = UpdatedComponent->GetForwardVector() * 30.f;
+	Start = UpdatedComponent->GetComponentLocation() + StartOffset;
+	End = Start + UpdatedComponent->GetForwardVector();
+	CapsuleTraceHitResults.Reset();
 	GetWorld()->SweepMultiByProfile(CapsuleTraceHitResults, Start, End, FQuat::Identity , "BlockAll", CapShape, TalesCharacterOwner->GetIgnoreCharacterParams());
 	if(CapsuleTraceHitResults.IsEmpty())
 	{
@@ -1208,7 +1312,7 @@ void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iteratio
 		StartNewPhysics(deltaTime, Iterations);
 		return;
 	}
-
+	
 	// ProcessClimableSurfaceInfo
 	FVector CurrentClimbableSurfaceLocation = FVector::ZeroVector;
 	FVector CurrentClimbablefaceNormal = FVector::ZeroVector;
@@ -1231,6 +1335,33 @@ void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iteratio
 		return;
 	}
 
+	// Check Has Reached Ledge
+	FHitResult LedgetHitResult;
+	float TraceStartOffset = 25.f;
+	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
+	const FVector EyeHeightOffset = UpdatedComponent->GetUpVector() * (CharacterOwner->BaseEyeHeight + TraceStartOffset);
+	const FVector LineStart = ComponentLocation + EyeHeightOffset;
+	// LINE(LineStart, LineStart + UpdatedComponent->GetUpVector() * 100.f, FColor::Yellow);
+	GetWorld()->LineTraceSingleByProfile(LedgetHitResult, LineStart, LineStart + UpdatedComponent->GetForwardVector() * 100.f, "BlockAll", TalesCharacterOwner->GetIgnoreCharacterParams());
+	// LINE(LineStart, LineStart + UpdatedComponent->GetForwardVector() * 150.f, FColor::Red);
+	if(!LedgetHitResult.bBlockingHit)
+	{
+		const FVector WalkableSurfaceTraceStart = LedgetHitResult.TraceEnd;
+		const FVector WalkableSurfaceTraceEnd = WalkableSurfaceTraceStart - UpdatedComponent->GetUpVector()  * 100.f;
+		FHitResult WalkableSurfaceHitResult;
+		GetWorld()->LineTraceSingleByProfile(WalkableSurfaceHitResult, WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd, "BlockAll", TalesCharacterOwner->GetIgnoreCharacterParams());
+		// FVector tmp = GetUnRotatedClimbVelocity();
+		// SLOG(tmp.ToString());
+		// SLOG(Velocity.ToString());
+		if(WalkableSurfaceHitResult.bBlockingHit && GetUnRotatedClimbVelocity().Z > 15.f)
+		{
+			SetMovementMode(MOVE_Flying);
+			CharacterOwner->PlayAnimMontage(OutClimbMontage);
+			MontageName = "ClimbOut";
+			StartNewPhysics(deltaTime, Iterations);
+		}
+	}
+	
 	RestorePreAdditiveRootMotionVelocity();
 
 	// mapping Acceleration
@@ -1267,6 +1398,16 @@ void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iteratio
 	const FVector ProjectedCharacterToSurface = (CurrentClimbableSurfaceLocation - UpdatedComponent->GetComponentLocation()).ProjectOnTo(UpdatedComponent->GetForwardVector());
 	const FVector SnapVector = -CurrentClimbablefaceNormal * ProjectedCharacterToSurface.Length();
 	UpdatedComponent->MoveComponent(SnapVector * deltaTime * GetMaxSpeed(), UpdatedComponent->GetComponentQuat(), true);
+}
+
+void UTalesCharacterMovementComponent::OnClimbMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if((Montage == TransitionClimbUpMontage || Montage == TransitionClimbDownMontage) && CharacterOwner->GetLocalRole() != ROLE_SimulatedProxy)
+	{
+		SLOG("Climb Montage ended");
+		Safe_bWantsToClimb = true;
+		Safe_bClimbTransitionFinished = true;
+	}
 }
 #pragma endregion
 // ---------------------------------------       Trigger        ---------------------------------------------
@@ -1318,5 +1459,6 @@ void UTalesCharacterMovementComponent::ClimbPressed()
 
 void UTalesCharacterMovementComponent::ClimbReleased()
 {
+	Safe_bWantsToClimb = false;
 }
 #pragma endregion
