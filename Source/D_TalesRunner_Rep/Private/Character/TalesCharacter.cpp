@@ -24,7 +24,7 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	TalesCharacterMovementComponent = Cast<UTalesCharacterMovementComponent>(GetCharacterMovement());
 	TalesCharacterMovementComponent->SetIsReplicated(true);
 
-	InventoryComp = CreateDefaultSubobject<UTalesInventoryComponent>("InventoryComp");
+	InventoryComponent = CreateDefaultSubobject<UTalesInventoryComponent>("TalesInventoryComponent");
 	
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>("SpringArmComp");
 	SpringArmComp->SetupAttachment(RootComponent);

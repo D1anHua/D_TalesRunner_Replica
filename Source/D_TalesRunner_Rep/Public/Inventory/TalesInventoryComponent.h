@@ -22,9 +22,20 @@ public:
 	
 	virtual void InitializeComponent() override;
 
+	//! GetFunction
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	FORCEINLINE int32 GetMoneyAmount(){ return InventoryMoneyAmount; }
+	FORCEINLINE int32 GetMoneyAmount() const { return InventoryMoneyAmount; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE float GetHeartNow() const { return InventoryHeartNow; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE float GetHeartMax() const { return InventoryMaxHeart; }
+	
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE void SetHeartNow(const float NowHeart){ InventoryHeartNow = NowHeart; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE void SetHeartMax(const float MaxHeart){ InventoryMaxHeart = MaxHeart; }
 
+	//! Bind Event
 	UFUNCTION()
 	void OnCharacterOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult & SweepResult);
 	
@@ -32,8 +43,15 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	//! Money Variable
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|Money")	
 	int32 InventoryMoneyAmount = 0;
+
+	//! Heart Variable(Health)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|Health")	
+	float InventoryHeartNow = 7.5;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|Health")	
+	float InventoryMaxHeart = 10;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|UI")
 	TSubclassOf<UUserWidget> InventoryWidget;

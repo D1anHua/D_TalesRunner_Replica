@@ -54,5 +54,5 @@ void UTalesInventoryUserWidget::MoneyAmountUpdate(AActor* InstigateActor, UTales
 	{
 		MoneyAmountText->SetText(FText::FromString(FString::FromInt(MoneyAmount)));
 	}
-	GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Red, "DDD");
+	// GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Red, "DDD");
 }

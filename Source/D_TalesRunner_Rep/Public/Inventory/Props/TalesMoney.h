@@ -12,7 +12,9 @@ struct FTalesMoneyData : public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
 
-public:
+	FTalesMoneyData():Name("Null"), Amount(0), Mesh(nullptr)
+	{}
+	
 	//! The 'Name' Column is the same as the XP Level
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Money")
 	FName Name;

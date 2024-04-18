@@ -10,6 +10,8 @@
 UTalesInventoryComponent::UTalesInventoryComponent()
 {
 	InventoryMoneyAmount = 0;
+	InventoryMaxHeart = 8;
+	InventoryHeartNow = 7.5;
 }
 
 void UTalesInventoryComponent::InitializeComponent()

@@ -10,7 +10,7 @@
 #include "Net/UnrealNetwork.h"
 
 // Helper Macros
-#if 1
+#if 0
 float MacroDuration = 2.f;
 #define SLOG(x) GEngine->AddOnScreenDebugMessage(-1, MacroDuration ? MacroDuration : -1.f, FColor::Yellow, x);
 #define POINT(x, c) DrawDebugPoint(GetWorld(), x, 10, c, !MacroDuration, MacroDuration);
@@ -1366,7 +1366,6 @@ void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iteratio
 
 	// mapping Acceleration
 	Acceleration.Z = 0.f;
-	MacroDuration = 1.f;
 	Acceleration = Acceleration.RotateAngleAxis(90.f, -UpdatedComponent->GetRightVector());
 	if(!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{

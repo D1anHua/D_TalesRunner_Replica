@@ -27,7 +27,7 @@ public:
 
 	FORCEINLINE UTalesCharacterMovementComponent* GetTalesCharacterMovement() const { return TalesCharacterMovementComponent; }
 	FCollisionQueryParams GetIgnoreCharacterParams() const;
-	FORCEINLINE UTalesInventoryComponent* GetTalesInventoryComponent() const { return InventoryComp; }
+	FORCEINLINE UTalesInventoryComponent* GetTalesInventoryComponent() const { return InventoryComponent; }
 	
 protected:
 	/* Enhanced Input, PCInputMapping using for PC Game */
@@ -44,7 +44,7 @@ protected:
 	UInputAction* Input_LookMouse;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	TObjectPtr<UTalesInventoryComponent> InventoryComp;
+	TObjectPtr<UTalesInventoryComponent> InventoryComponent;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<USpringArmComponent> SpringArmComp;
