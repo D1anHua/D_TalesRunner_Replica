@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "TalesCharacter.generated.h"
 
+class UTalesInventoryComponent;
 class UTalesCharacterMovementComponent;
 class UCameraComponent;
 class UInputMappingContext;
@@ -26,6 +27,7 @@ public:
 
 	FORCEINLINE UTalesCharacterMovementComponent* GetTalesCharacterMovement() const { return TalesCharacterMovementComponent; }
 	FCollisionQueryParams GetIgnoreCharacterParams() const;
+	FORCEINLINE UTalesInventoryComponent* GetTalesInventoryComponent() const { return InventoryComp; }
 	
 protected:
 	/* Enhanced Input, PCInputMapping using for PC Game */
@@ -40,7 +42,10 @@ protected:
 	UInputAction* Input_Sprint;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* Input_LookMouse;
-
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	TObjectPtr<UTalesInventoryComponent> InventoryComp;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<USpringArmComponent> SpringArmComp;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
@@ -57,6 +62,7 @@ protected:
 	TObjectPtr<UTimelineComponent> SprintTimeLineComp;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sprint|VFX")
 	TObjectPtr<UNiagaraComponent> SprintLineNiagaraComp;
+	
 	//
 	// UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "JetPack|VFX")
 	// TObjectPtr<UNiagaraComponent> JetPackThrusterComp;

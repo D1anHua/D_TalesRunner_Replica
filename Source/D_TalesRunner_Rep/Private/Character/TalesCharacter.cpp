@@ -11,6 +11,7 @@
 #include "EnhancedInputComponent.h"
 #include "Character/TalesCharacterMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Inventory/TalesInventoryComponent.h"
 
 // TODO: Debug system include File, Delete later
 
@@ -23,6 +24,8 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	TalesCharacterMovementComponent = Cast<UTalesCharacterMovementComponent>(GetCharacterMovement());
 	TalesCharacterMovementComponent->SetIsReplicated(true);
 
+	InventoryComp = CreateDefaultSubobject<UTalesInventoryComponent>("InventoryComp");
+	
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>("SpringArmComp");
 	SpringArmComp->SetupAttachment(RootComponent);
 

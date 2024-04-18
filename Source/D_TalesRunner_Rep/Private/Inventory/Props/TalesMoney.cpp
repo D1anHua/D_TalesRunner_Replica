@@ -7,8 +7,8 @@
 ATalesMoney::ATalesMoney()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-
+	MoneyMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MoneyMesh"));
+	RootComponent = MoneyMesh;
 }
 
 // Called when the game starts or when spawned
@@ -18,10 +18,31 @@ void ATalesMoney::BeginPlay()
 	
 }
 
-// Called every frame
-void ATalesMoney::Tick(float DeltaTime)
+#if WITH_EDITOR
+void ATalesMoney::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-	Super::Tick(DeltaTime);
+	Super::PostEditChangeProperty(PropertyChangedEvent);
 
+	if(MoneyTable)
+	{
+		FString ContextString = "Searching for Mesh";
+		FTalesMoneyData* Row = MoneyTable->FindRow<FTalesMoneyData>(RowName, ContextString);
+
+		if(Row)
+		{
+			MoneyData.Name = Row->Name;
+			MoneyData.Amount = Row->Amount;
+			MoneyData.Mesh = Row->Mesh;
+			MoneyMesh->SetStaticMesh(MoneyData.Mesh);
+		}
+
+		RowNames = MoneyTable->GetRowNames();
+	}
 }
+
+TArray<FName> ATalesMoney::GetMoneyTypeName() const
+{
+	return RowNames;
+}
+#endif
 
