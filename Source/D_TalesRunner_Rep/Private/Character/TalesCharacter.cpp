@@ -9,9 +9,12 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "Blueprint/UserWidget.h"
 #include "Character/TalesCharacterMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Inventory/TalesInventorInteractUI.h"
 #include "Inventory/TalesInventoryComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 // TODO: Debug system include File, Delete later
 
@@ -47,6 +50,7 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	// JetPackThrusterComp->SetupAttachment(JetPackComp);
 	//
 	// JetPackThrusterAudioComp = CreateDefaultSubobject<UAudioComponent>("JetPackSFX");
+
 }
 
 // Called when the game starts or when spawned
@@ -57,6 +61,8 @@ void ATalesCharacter::BeginPlay()
 	// JetPackThrusterComp->Deactivate();
 	// JetPackThrusterAudioComp->Activate();
 	// JetPackThrusterAudioComp->Stop();
+	// Interact Component
+	InteractUI = CreateWidget<UTalesInventorInteractUI>(UGameplayStatics::GetPlayerController(GetWorld(),0), InteractUIClass);
 }
 
 void ATalesCharacter::PostInitializeComponents()
@@ -192,6 +198,27 @@ void ATalesCharacter::UpdateSprintFov(float TimelineOutput)
 {
 	float CurrentFov = TimelineOutput * (SprintFov - DefaultFov) + DefaultFov;
 	CameraComp->SetFieldOfView(CurrentFov);
+}
+
+void ATalesCharacter::ActivateInteractUI()
+{
+	if(InteractUI == nullptr)
+	{
+		InteractUI = CreateWidget<UTalesInventorInteractUI>(GetWorld(), InteractUIClass);	
+	}
+	
+	if(!InteractUI->IsInViewport())
+	{
+		InteractUI->AddToViewport();
+	}
+}
+
+void ATalesCharacter::UnActivateInteractUI()
+{
+	if(InteractUI)
+	{
+		InteractUI->RemoveFromParent();
+	}
 }
 
 FCollisionQueryParams ATalesCharacter::GetIgnoreCharacterParams() const

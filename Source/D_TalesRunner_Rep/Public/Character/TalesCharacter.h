@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "TalesCharacter.generated.h"
 
+class UTalesInventorInteractUI;
 class UTalesInventoryComponent;
 class UTalesCharacterMovementComponent;
 class UCameraComponent;
@@ -121,4 +122,15 @@ private:
 	UPROPERTY()
 	UCameraShakeBase* CurrentSprintShake;
 
+	//! Interact Component
+public:
+	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Interact")
+	TSubclassOf<UTalesInventorInteractUI> InteractUIClass;
+	
+	UPROPERTY()	
+	UTalesInventorInteractUI* InteractUI;
+
+	// Interact Begin
+	void ActivateInteractUI();
+	void UnActivateInteractUI();
 };

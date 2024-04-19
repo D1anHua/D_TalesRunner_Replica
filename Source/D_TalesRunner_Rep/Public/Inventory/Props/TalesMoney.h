@@ -38,11 +38,8 @@ public:
 	ATalesMoney();
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Mesh")
 	TObjectPtr<UStaticMeshComponent> MoneyMesh;
-
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data", meta=(GetOptions="GetMoneyTypeName"))
 	FName RowName;
-	UPROPERTY()
-	TArray<FName> RowNames;
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Data")
 	TObjectPtr<UDataTable> MoneyTable;
 	UPROPERTY(BlueprintReadOnly)
@@ -57,6 +54,8 @@ protected:
 #endif
 	
 	// Helper Functions
+	UPROPERTY()
+	TArray<FName> RowNames;
 	UFUNCTION()
 	TArray<FName> GetMoneyTypeName() const;
 };

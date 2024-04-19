@@ -42,6 +42,7 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	//! Money Variable
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|Money")	
@@ -58,4 +59,8 @@ protected:
 
 	UPROPERTY(Transient)
 	class ATalesCharacter* TalesCharacterOwner;
+
+private:
+	void PrimaryInteractTraceBySight();
+	void PrimaryInteractTraceByFoot();
 };
