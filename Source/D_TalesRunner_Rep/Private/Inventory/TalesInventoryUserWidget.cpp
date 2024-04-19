@@ -20,7 +20,7 @@ void UTalesInventoryUserWidget::NativeConstruct()
 			auto InitialMoneyAmount = TalesCharacter->GetTalesInventoryComponent()->GetMoneyAmount();
 			MoneyAmountText->SetText(FText::FromString(FString::FromInt(InitialMoneyAmount)));
 		}
-		TalesCharacter->GetTalesInventoryComponent()->MoneyAmountChangeDelegate.AddDynamic(this, &ThisClass::MoneyAmountUpdate);
+		// TalesCharacter->GetTalesInventoryComponent()->MoneyAmountChangeDelegate.AddDynamic(this, &ThisClass::MoneyAmountUpdate);
 	}
 }
 
@@ -45,14 +45,4 @@ bool UTalesInventoryUserWidget::Initialize()
 		}	
 	}
 	return true;
-}
-
-void UTalesInventoryUserWidget::MoneyAmountUpdate(AActor* InstigateActor, UTalesInventoryComponent* OwnComp,
-                                                  int32 MoneyAmount, int32 delta)
-{
-	if(MoneyAmountText)
-	{
-		MoneyAmountText->SetText(FText::FromString(FString::FromInt(MoneyAmount)));
-	}
-	// GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Red, "DDD");
 }

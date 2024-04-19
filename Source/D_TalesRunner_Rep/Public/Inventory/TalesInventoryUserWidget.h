@@ -22,6 +22,6 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* MoneyAmountText;
 
-	UFUNCTION()
-	void MoneyAmountUpdate(AActor* InstigateActor, UTalesInventoryComponent* OwnComp, int32 MoneyAmount, int32 delta);
+	// UFUNCTION()
+	// void MoneyAmountUpdate(AActor* InstigateActor, UTalesInventoryComponent* OwnComp, int32 MoneyAmount, int32 delta);
 };

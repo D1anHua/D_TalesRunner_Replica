@@ -16,6 +16,7 @@ class D_TALESRUNNER_REP_API UTalesHealthBarUserWidget : public UUserWidget
 
 public:
 	virtual void NativeConstruct() override;
+	
 
 protected:
 	UPROPERTY(meta=(BindWidget))
