@@ -4,7 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "TalesInventoroyItem.h"
 #include "TalesInventoryComponent.generated.h"
+
+//! 用来存放不同界面的Array
+USTRUCT(BlueprintType)
+struct FTalesInventoryPackageDatas
+{
+	GENERATED_BODY()
+
+	TMultiMap<FName, FTalesInventoryItemSlot> Sward;
+	TMultiMap<FName, FTalesInventoryItemSlot> Shield;
+	TMultiMap<FName, FTalesInventoryItemSlot> Eatable;
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FMoneyAmountChangeDelegate, AActor*, InstigateActor, UTalesInventoryComponent*, OwnComp, int32, MoneyAmount, int32, delta);
 
@@ -29,6 +41,8 @@ public:
 	FORCEINLINE float GetHeartNow() const { return InventoryHeartNow; }
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE float GetHeartMax() const { return InventoryMaxHeart; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE FTalesInventoryPackageDatas GetPackagesDatas() const { return PackageDatas; }
 	
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE void SetHeartNow(const float NowHeart){ InventoryHeartNow = NowHeart; }
@@ -60,6 +74,17 @@ protected:
 	UPROPERTY(Transient)
 	class ATalesCharacter* TalesCharacterOwner;
 
+
+	// Main Data
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|Data")
+	FTalesInventoryPackageDatas PackageDatas;
+
+	// @TODO 后面要加到接口里面, 每个物体的拾取的操作都不一样
+	UFUNCTION(BlueprintCallable)
+	void AddItemToPackage(AActor* HitActor);
+
+	UFUNCTION(BlueprintCallable)
+	void PickKeyPressed();
 private:
 	void PrimaryInteractTraceBySight();
 	void PrimaryInteractTraceByFoot();

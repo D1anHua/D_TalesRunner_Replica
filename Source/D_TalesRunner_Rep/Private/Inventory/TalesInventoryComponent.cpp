@@ -2,6 +2,8 @@
 
 
 #include "Inventory/TalesInventoryComponent.h"
+
+#include "IDetailTreeNode.h"
 #include "Character/TalesCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "Inventory/TalesInventorInteractUI.h"
@@ -15,6 +17,7 @@ UTalesInventoryComponent::UTalesInventoryComponent()
 	InventoryMoneyAmount = 0;
 	InventoryMaxHeart = 8;
 	InventoryHeartNow = 7.5;
+
 }
 
 void UTalesInventoryComponent::InitializeComponent()
@@ -48,6 +51,69 @@ void UTalesInventoryComponent::OnCharacterOverlap(UPrimitiveComponent* Overlappe
 	MoneyAmountChangeDelegate.Broadcast(Cast<AActor>(Money), this, InventoryMoneyAmount, Money->MoneyData.Amount);
 	Money->Destroy();
 	GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Blue, FString::FromInt(InventoryMoneyAmount));	
+}
+
+// ------------------------------------------------  Main Data -------------------------------------------------
+void UTalesInventoryComponent::AddItemToPackage(AActor* HitActor)
+{
+	auto ItemActor = Cast<ATalesInventoryItem>(HitActor);
+	if(ItemActor)
+	{
+		TMultiMap<FName ,FTalesInventoryItemSlot>* PickedColumnItems;
+		switch(ItemActor->Item.ItemType)
+		{
+		case Sward:
+			PickedColumnItems = &PackageDatas.Sward;
+			break;
+		case Shield:
+			PickedColumnItems = &PackageDatas.Shield;
+			break;
+		case Eatable:
+			PickedColumnItems = &PackageDatas.Eatable;
+			break;
+		default:
+			return;			
+		}
+		// Add Item
+		auto FindAns = PickedColumnItems->Find(ItemActor->Item.ItemRowHandle.RowName);
+		if(FindAns == nullptr)
+		{
+			// 原先没有
+			PickedColumnItems->AddUnique(ItemActor->Item.ItemRowHandle.RowName, ItemActor->Item);	
+		}else
+		{
+			int numTemp = FindAns->Quantity + ItemActor->Item.Quantity;
+			if(numTemp <= ItemActor->MenuItem.StackSize)
+			{
+				// 表示没装满
+				FindAns->Quantity = numTemp;
+			}
+			else
+			{
+				// 装满了
+				FindAns->Quantity = ItemActor->MenuItem.StackSize;
+				numTemp -= ItemActor->MenuItem.StackSize;
+				ItemActor->Item.Quantity = numTemp;
+				PickedColumnItems->AddUnique(ItemActor->Item.ItemRowHandle.RowName, ItemActor->Item);	
+			}
+		}
+	}
+}
+
+void UTalesInventoryComponent::PickKeyPressed()
+{
+	// @TODO Delete, 做两遍检测
+	FHitResult Hit;
+	FCollisionShape CollisionShape;
+	CollisionShape.SetBox(FVector3f(40.f, 40.f, 20.f));
+	FVector BeginLocation = TalesCharacterOwner->GetActorLocation() -  TalesCharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * TalesCharacterOwner->GetActorUpVector();
+	FVector EndLocation = BeginLocation + TalesCharacterOwner->GetActorForwardVector() * 60;
+	bool bGetHit = GetWorld()->SweepSingleByProfile(Hit, BeginLocation, EndLocation, FQuat::Identity, "InventoryItem", CollisionShape,TalesCharacterOwner->GetIgnoreCharacterParams());
+	if(bGetHit && Hit.GetActor()->Implements<UTalesInventoryInterface>())
+	{
+		AddItemToPackage(Hit.GetActor());
+		Hit.GetActor()->Destroy();
+	}
 }
 
 void UTalesInventoryComponent::PrimaryInteractTraceBySight()

@@ -7,6 +7,7 @@
 #include "Character/TalesCharacter.h"
 #include "Engine/DataTable.h"
 #include "Inventory/TalesInventorInteractUI.h"
+#include "Inventory/TalesInventoryComponent.h"
 
 // Sets default values
 ATalesInventoryItem::ATalesInventoryItem()

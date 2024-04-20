@@ -8,6 +8,8 @@
 
 #define BUTTON_ITEM_NAME {"Sward", "Shield", "Eatable"}
 
+struct FTalesInventoryItemSlot;
+class ATalesCharacter;
 /**
  * 
  */
@@ -22,6 +24,14 @@ public:
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UWidgetSwitcher* PageSwitcher;
+	UPROPERTY(meta = (BindWidget))
+	class UWrapBox* SwardWrapBox;
+	UPROPERTY(meta = (BindWidget))
+	class UWrapBox* ShieldWrapBox;
+	UPROPERTY(meta = (BindWidget))
+	class UWrapBox* EatableWrapBox;
+	UPROPERTY(BlueprintReadWrite ,EditAnywhere, Category = "Slot")
+	TSubclassOf<class UTalesSlotUserWidget> SlotClass;
 	
 	UPROPERTY(meta = (BindWidget))
 	class UTalesItemButton* SwardButton;
@@ -45,9 +55,7 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Color")
 	struct FLinearColor NotActivatedColor;
 	
-	UPROPERTY()
 	TArray<UTalesItemButton*> ButtonItems;
-	UPROPERTY()
 	TArray<UImage*> ImageItems;
 
 	UFUNCTION()
@@ -62,4 +70,11 @@ protected:
 private:
 	TArray<FString> ButtonItemNames = BUTTON_ITEM_NAME;
 	FORCEINLINE int GetIndex(FString Name) const{ return ButtonItemNames.Find(Name); };
+
+	UPROPERTY()
+	ATalesCharacter* TalesCharacterOwner;
+
+	void InitializeData();
+	void InitializeOnePageData(TMultiMap<FName, FTalesInventoryItemSlot>& PageData, UWrapBox*& Box);
+	void SetTalesCharacterOwner();
 };

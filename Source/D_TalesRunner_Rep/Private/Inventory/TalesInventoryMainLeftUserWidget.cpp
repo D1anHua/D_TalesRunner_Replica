@@ -3,9 +3,14 @@
 
 #include "Inventory/TalesInventoryMainLeftUserWidget.h"
 
+#include "Character/TalesCharacter.h"
 #include "Components/Image.h"
 #include "Components/WidgetSwitcher.h"
+#include "Components/WrapBox.h"
+#include "Inventory/Props/TalesSlotUserWidget.h"
+#include "Inventory/TalesInventoryComponent.h"
 #include "Inventory/Props/TalesItemButton.h"
+#include "Kismet/GameplayStatics.h"
 
 
 void UTalesInventoryMainLeftUserWidget::NativePreConstruct()
@@ -27,10 +32,12 @@ void UTalesInventoryMainLeftUserWidget::NativePreConstruct()
 	{
 		ActivateButton(Index);
 	}
+	SetTalesCharacterOwner();
 }
 void UTalesInventoryMainLeftUserWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	InitializeData();
 }
 
 void UTalesInventoryMainLeftUserWidget::OnItemButtonHovered(FString Name)
@@ -72,5 +79,50 @@ void UTalesInventoryMainLeftUserWidget::ActivateButton(int Index)
 		{
 			ImageItems[i]->SetBrushTintColor(NotActivatedColor);
 		}
+	}
+}
+
+void UTalesInventoryMainLeftUserWidget::InitializeData()
+{
+	if(TalesCharacterOwner && ensureAlways(SlotClass))
+	{
+		FTalesInventoryPackageDatas Datas = TalesCharacterOwner->GetTalesInventoryComponent()->GetPackagesDatas();	
+		// Sward
+		InitializeOnePageData(Datas.Sward, SwardWrapBox);
+		InitializeOnePageData(Datas.Shield, ShieldWrapBox);
+		InitializeOnePageData(Datas.Eatable, EatableWrapBox);
+	}
+}
+
+void UTalesInventoryMainLeftUserWidget::InitializeOnePageData(TMultiMap<FName, FTalesInventoryItemSlot>& PageData,
+	UWrapBox*& Box)
+{
+	if(Box)
+	{
+		Box->ClearChildren();
+		if(PageData.IsEmpty())
+		{
+			UTalesSlotUserWidget* Widget = CreateWidget<UTalesSlotUserWidget>(this, SlotClass);
+			Box->AddChildToWrapBox(Widget);
+		}else
+		{
+			for(auto& item : PageData)
+			{
+				UTalesSlotUserWidget* Widget = CreateWidget<UTalesSlotUserWidget>(this, SlotClass);
+				Widget->SetDataConstruct(item.Value);
+				Box->AddChildToWrapBox(Widget);
+			}
+		}
+	}
+}
+
+void UTalesInventoryMainLeftUserWidget::SetTalesCharacterOwner()
+{
+	auto Character = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	TalesCharacterOwner = Cast<ATalesCharacter>(Character);
+	if(!IsValid(TalesCharacterOwner))
+	{
+		TalesCharacterOwner = nullptr;
+		UE_LOG(LogTemp, Error, TEXT("Inventroy Main Left: Error to Get TalesCharacter."))
 	}
 }

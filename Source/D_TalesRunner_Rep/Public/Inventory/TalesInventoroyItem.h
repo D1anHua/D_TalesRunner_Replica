@@ -50,6 +50,15 @@ struct FTalesInventoryItemSlot
 	int32					Quantity;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TEnumAsByte<ETalesInventoryItem>		ItemType;
+
+	bool operator==(const FTalesInventoryItemSlot& Others)
+	{
+		if(this->ItemRowHandle != Others.ItemRowHandle || this->Quantity != Others.Quantity || this->ItemType != Others.ItemType)
+		{
+			return false;
+		}
+		return true;
+	}
 };
 
 UCLASS()
