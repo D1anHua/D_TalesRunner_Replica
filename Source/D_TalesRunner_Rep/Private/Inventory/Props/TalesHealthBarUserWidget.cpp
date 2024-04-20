@@ -9,10 +9,9 @@
 #include "Inventory/Props/TalesHeartUserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
-void UTalesHealthBarUserWidget::NativeConstruct()
+void UTalesHealthBarUserWidget::NativeOnInitialized()
 {
-	Super::NativeConstruct();
-
+	Super::NativeOnInitialized();
 	auto OwnCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
 	ATalesCharacter* TalesCharacter = Cast<ATalesCharacter>(OwnCharacter);
 	if(TalesCharacter)
@@ -20,11 +19,26 @@ void UTalesHealthBarUserWidget::NativeConstruct()
 		MaxHealth = TalesCharacter->GetTalesInventoryComponent()->GetHeartMax();
 		NowHealth = TalesCharacter->GetTalesInventoryComponent()->GetHeartNow();
 	}
+}
+
+void UTalesHealthBarUserWidget::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+}
+
+void UTalesHealthBarUserWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	InitialHealth(MaxHealth, NowHealth);
+}
+
+void UTalesHealthBarUserWidget::InitialHealth(float InMaxHealth, float InNowHealth)
+{
 	if(HealthBarWarpBox && ensureAlways(HeartWidget))
 	{
 		HealthBarWarpBox->ClearChildren();
-		float temp = NowHealth;
-		for(int i = 0; i < FMath::CeilToInt32(MaxHealth); ++i)
+		float temp = InNowHealth;
+		for(int i = 0; i < FMath::CeilToInt32(InMaxHealth); ++i)
 		{
 			auto Widget = CreateWidget(this, HeartWidget);
 			HealthBarWarpBox->AddChildToWrapBox(Widget);

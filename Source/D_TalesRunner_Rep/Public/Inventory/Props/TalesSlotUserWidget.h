@@ -7,6 +7,7 @@
 #include "Inventory/TalesInventoroyItem.h"
 #include "TalesSlotUserWidget.generated.h"
 
+class UTalesInventoryComponent;
 /**
  * 
  */
@@ -16,6 +17,7 @@ class D_TALESRUNNER_REP_API UTalesSlotUserWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	virtual void NativeOnInitialized() override;
 	virtual void NativePreConstruct() override;
 	
 	//! @brief Button: will rewrite the hover, un hover, selected function
@@ -46,13 +48,17 @@ protected:
 	UTexture2D* UnHoverBorder;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
 	UTexture2D* HoverBorder;
+
+	UPROPERTY(Transient)
+	UTalesInventoryComponent* InventoryComponent;
 	
 	UFUNCTION()
 	void OnHovered();
 	UFUNCTION()
 	void OnUnHovered();
-
 public:
 	// HelpFunction
 	void SetDataConstruct(FTalesInventoryItemSlot OtherData);
+	void GetInventoryComponent();
 };
+

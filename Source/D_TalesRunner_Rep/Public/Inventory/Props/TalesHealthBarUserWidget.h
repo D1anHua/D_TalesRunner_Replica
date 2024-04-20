@@ -15,8 +15,14 @@ class D_TALESRUNNER_REP_API UTalesHealthBarUserWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
+	virtual void NativeOnInitialized() override;
+	virtual void NativePreConstruct() override;
 	virtual void NativeConstruct() override;
-	
+	inline void SetHealth(float InMaxHealth, float InNowHealth)
+	{
+		this->MaxHealth = InMaxHealth;
+		this->NowHealth = InNowHealth;
+	};
 
 protected:
 	UPROPERTY(meta=(BindWidget))
@@ -26,4 +32,7 @@ protected:
 
 	float MaxHealth = 0.f;
 	float NowHealth = MaxHealth;
+
+private:
+	void InitialHealth(float InMaxHealth, float InNowHealth);
 };

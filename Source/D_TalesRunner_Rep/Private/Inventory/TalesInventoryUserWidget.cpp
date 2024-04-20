@@ -5,6 +5,7 @@
 #include "Character/TalesCharacter.h"
 #include "Components/TextBlock.h"
 #include "Inventory/TalesInventoryComponent.h"
+#include "Inventory/Props/TalesInfoCueUserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
 void UTalesInventoryUserWidget::NativeConstruct()
@@ -21,6 +22,10 @@ void UTalesInventoryUserWidget::NativeConstruct()
 			MoneyAmountText->SetText(FText::FromString(FString::FromInt(InitialMoneyAmount)));
 		}
 		// TalesCharacter->GetTalesInventoryComponent()->MoneyAmountChangeDelegate.AddDynamic(this, &ThisClass::MoneyAmountUpdate);
+	}
+	if(WBPItemsInfoCue)
+	{
+		WBPItemsInfoCue->SetVisibility(ESlateVisibility::Hidden);
 	}
 }
 

@@ -7,6 +7,7 @@
 #include "TalesInventoroyItem.h"
 #include "TalesInventoryComponent.generated.h"
 
+class UTalesInventoryUserWidget;
 //! 用来存放不同界面的Array
 USTRUCT(BlueprintType)
 struct FTalesInventoryPackageDatas
@@ -18,7 +19,7 @@ struct FTalesInventoryPackageDatas
 	TMultiMap<FName, FTalesInventoryItemSlot> Eatable;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FMoneyAmountChangeDelegate, AActor*, InstigateActor, UTalesInventoryComponent*, OwnComp, int32, MoneyAmount, int32, delta);
+// DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FMoneyAmountChangeDelegate, AActor*, InstigateActor, UTalesInventoryComponent*, OwnComp, int32, MoneyAmount, int32, delta);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class D_TALESRUNNER_REP_API UTalesInventoryComponent : public UActorComponent
@@ -29,8 +30,8 @@ public:
 	// Sets default values for this component's properties
 	UTalesInventoryComponent();
 
-	UPROPERTY(BlueprintAssignable)
-	FMoneyAmountChangeDelegate MoneyAmountChangeDelegate;
+	// UPROPERTY(BlueprintAssignable)
+	// FMoneyAmountChangeDelegate MoneyAmountChangeDelegate;
 	
 	virtual void InitializeComponent() override;
 
@@ -43,6 +44,8 @@ public:
 	FORCEINLINE float GetHeartMax() const { return InventoryMaxHeart; }
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE FTalesInventoryPackageDatas GetPackagesDatas() const { return PackageDatas; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE UTalesInventoryUserWidget* GetInventoryUserWidget() const { return InventoryWidget; }
 	
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE void SetHeartNow(const float NowHeart){ InventoryHeartNow = NowHeart; }
@@ -69,7 +72,9 @@ protected:
 	float InventoryMaxHeart = 10;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|UI")
-	TSubclassOf<UUserWidget> InventoryWidget;
+	TSubclassOf<UTalesInventoryUserWidget> InventoryWidgetClass;
+	UPROPERTY(BlueprintReadWrite, Category = "Inventory|UI")
+	UTalesInventoryUserWidget* InventoryWidget;
 
 	UPROPERTY(Transient)
 	class ATalesCharacter* TalesCharacterOwner;

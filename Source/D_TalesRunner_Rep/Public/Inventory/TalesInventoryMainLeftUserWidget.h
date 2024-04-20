@@ -19,8 +19,9 @@ class D_TALESRUNNER_REP_API UTalesInventoryMainLeftUserWidget : public UUserWidg
 	GENERATED_BODY()
 
 public:
-	virtual void NativeConstruct() override;
+	virtual void NativeOnInitialized() override;
 	virtual void NativePreConstruct() override;
+	virtual void NativeConstruct() override;
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UWidgetSwitcher* PageSwitcher;

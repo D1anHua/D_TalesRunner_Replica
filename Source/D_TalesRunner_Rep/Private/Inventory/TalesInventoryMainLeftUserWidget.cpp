@@ -13,11 +13,12 @@
 #include "Kismet/GameplayStatics.h"
 
 
-void UTalesInventoryMainLeftUserWidget::NativePreConstruct()
+void UTalesInventoryMainLeftUserWidget::NativeOnInitialized()
 {
-	Super::NativePreConstruct();
+	Super::NativeOnInitialized();
 	ButtonItems = {SwardButton, ShieldButton, EatableButton};
 	ImageItems = {SwardImage, ShieldImage, EatableImage};
+	SetTalesCharacterOwner();
 	for(auto& item : ButtonItems)
 	{
 		if(item)
@@ -27,16 +28,20 @@ void UTalesInventoryMainLeftUserWidget::NativePreConstruct()
 			item->ClickDelegate.AddDynamic(this, &ThisClass::OnItemButtonClicked);
 		}
 	}
+}
+
+void UTalesInventoryMainLeftUserWidget::NativePreConstruct()
+{
+	Super::NativePreConstruct();
+}
+void UTalesInventoryMainLeftUserWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
 	int Index = PageSwitcher->GetActiveWidgetIndex();
 	if(Index != INDEX_NONE)
 	{
 		ActivateButton(Index);
 	}
-	SetTalesCharacterOwner();
-}
-void UTalesInventoryMainLeftUserWidget::NativeConstruct()
-{
-	Super::NativeConstruct();
 	InitializeData();
 }
 

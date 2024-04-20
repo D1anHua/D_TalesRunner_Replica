@@ -8,7 +8,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Inventory/TalesInventorInteractUI.h"
 #include "Inventory/TalesInventoryInterface.h"
+#include "Inventory/TalesInventoryUserWidget.h"
 #include "Inventory/Props/TalesMoney.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values for this component's properties
 UTalesInventoryComponent::UTalesInventoryComponent()
@@ -35,6 +37,11 @@ void UTalesInventoryComponent::BeginPlay()
 		auto CapsuleComp = TalesCharacterOwner->GetCapsuleComponent();
 		CapsuleComp->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnCharacterOverlap);
 	}
+
+	if(ensureAlways(InventoryWidgetClass))
+	{
+		 InventoryWidget = CreateWidget<UTalesInventoryUserWidget>(UGameplayStatics::GetPlayerController(GetWorld(), 0), InventoryWidgetClass);
+	}
 }
 
 void UTalesInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -48,7 +55,7 @@ void UTalesInventoryComponent::OnCharacterOverlap(UPrimitiveComponent* Overlappe
 {
 	auto Money = Cast<ATalesMoney>(OtherActor);
 	InventoryMoneyAmount += Money->MoneyData.Amount;
-	MoneyAmountChangeDelegate.Broadcast(Cast<AActor>(Money), this, InventoryMoneyAmount, Money->MoneyData.Amount);
+	// MoneyAmountChangeDelegate.Broadcast(Cast<AActor>(Money), this, InventoryMoneyAmount, Money->MoneyData.Amount);
 	Money->Destroy();
 	GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Blue, FString::FromInt(InventoryMoneyAmount));	
 }

@@ -21,7 +21,7 @@ ATalesInventoryItem::ATalesInventoryItem()
 
 void ATalesInventoryItem::Interact_Implementation(APawn* InstigatorPawn)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, Item.ItemRowHandle.RowName.ToString());
+	// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, Item.ItemRowHandle.RowName.ToString());
 	ATalesCharacter* InstigatorCharacter = Cast<ATalesCharacter>(InstigatorPawn);
 	if(InstigatorCharacter)
 	{

@@ -3,18 +3,32 @@
 
 #include "Inventory/Props/TalesSlotUserWidget.h"
 
+#include "Character/TalesCharacter.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Inventory/TalesInventoryComponent.h"
+#include "Inventory/TalesInventoryUserWidget.h"
+#include "Inventory/Props/TalesInfoCueUserWidget.h"
+#include "Kismet/GameplayStatics.h"
+
+void UTalesSlotUserWidget::NativeOnInitialized()
+{
+	Super::NativeOnInitialized();
+	if(SlotButton)
+	{
+		SlotButton->OnHovered.AddDynamic(this, &ThisClass::OnHovered);
+		SlotButton->OnUnhovered.AddDynamic(this, &ThisClass::OnUnHovered);
+	}
+	GetInventoryComponent();
+}
 
 void UTalesSlotUserWidget::NativePreConstruct()
 {
 	Super::NativePreConstruct();
 	SetDataConstruct(Data);
-	SlotButton->OnHovered.AddDynamic(this, &ThisClass::OnHovered);
-	SlotButton->OnUnhovered.AddDynamic(this, &ThisClass::OnUnHovered);
 	if(IsValid(HoverBorder) && IsValid(UnHoverBorder))
 	{
 		HoverBorderImage->SetVisibility(ESlateVisibility::Hidden);	
@@ -28,6 +42,13 @@ void UTalesSlotUserWidget::OnHovered()
 	HoverBorderImage->SetVisibility(ESlateVisibility::Visible);	
 	SlotSelectBorder->SetBrushFromTexture(HoverBorder);
 	SlotSelectBorder->SetBrushColor(FLinearColor(1.f, 1.f, 1.f, 1.f));
+	if(Data.Quantity <= 0)
+	{
+		return;
+	}
+	auto InfoCueWidget = InventoryComponent->GetInventoryUserWidget()->GetInfoCueUserWidget();
+	InfoCueWidget->InitializeAllInfo(0, Data);
+	InfoCueWidget->SetVisibility(ESlateVisibility::Visible);
 }
 
 void UTalesSlotUserWidget::OnUnHovered()
@@ -35,6 +56,8 @@ void UTalesSlotUserWidget::OnUnHovered()
 	HoverBorderImage->SetVisibility(ESlateVisibility::Hidden);	
 	SlotSelectBorder->SetBrushFromTexture(UnHoverBorder);
 	SlotSelectBorder->SetBrushColor(FLinearColor(1.f, 1.f, 1.f, 0.4f));
+	auto InfoCueWidget = InventoryComponent->GetInventoryUserWidget()->GetInfoCueUserWidget();
+	InfoCueWidget->SetVisibility(ESlateVisibility::Hidden);
 }
 
 void UTalesSlotUserWidget::SetDataConstruct(FTalesInventoryItemSlot OtherData)
@@ -62,3 +85,16 @@ void UTalesSlotUserWidget::SetDataConstruct(FTalesInventoryItemSlot OtherData)
 	}
 }
 
+void UTalesSlotUserWidget::GetInventoryComponent()
+{
+	auto Character = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	ATalesCharacter* TalesCharacter = Cast<ATalesCharacter>(Character);
+	if(TalesCharacter)
+	{
+		InventoryComponent = TalesCharacter->GetTalesInventoryComponent();
+		if(!IsValid(InventoryComponent))
+		{
+			UE_LOG(LogTemp, Error, TEXT("Error in Slot User Widget: Unable to Get Inventory Componet"));
+		}
+	}	
+}
