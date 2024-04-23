@@ -10,7 +10,7 @@
 #include "Net/UnrealNetwork.h"
 
 // Helper Macros
-#if 0
+#if 1
 float MacroDuration = 2.f;
 #define SLOG(x) GEngine->AddOnScreenDebugMessage(-1, MacroDuration ? MacroDuration : -1.f, FColor::Yellow, x);
 #define POINT(x, c) DrawDebugPoint(GetWorld(), x, 10, c, !MacroDuration, MacroDuration);
@@ -1178,6 +1178,7 @@ void UTalesCharacterMovementComponent::EnterClimb(EMovementMode PrevMode, ECusto
 	// SafeMoveUpdatedComponent(FVector::ZeroVector, NewRotation, false, Hit);
 	Velocity = FVector::Zero();
 	bOrientRotationToMovement = false;
+	OnEnterClimbStateDelegate.ExecuteIfBound();
 }
 
 void UTalesCharacterMovementComponent::ExitClimb()
@@ -1185,6 +1186,7 @@ void UTalesCharacterMovementComponent::ExitClimb()
 	Safe_bClimbTransitionFinished = false;
 	Safe_bWantsToClimb = false;	
 	bOrientRotationToMovement = true;
+	OnExitClimbStateDelegate.ExecuteIfBound();
 
 	FHitResult Hit;
 	const FRotator DirtyRotation = UpdatedComponent->GetComponentRotation();
@@ -1314,8 +1316,8 @@ void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iteratio
 	}
 	
 	// ProcessClimableSurfaceInfo
-	FVector CurrentClimbableSurfaceLocation = FVector::ZeroVector;
-	FVector CurrentClimbablefaceNormal = FVector::ZeroVector;
+	CurrentClimbableSurfaceLocation = FVector::ZeroVector;
+	CurrentClimbablefaceNormal = FVector::ZeroVector;
 	for(const FHitResult& TraceHitResult : CapsuleTraceHitResults)
 	{
 		CurrentClimbableSurfaceLocation += TraceHitResult.ImpactPoint;
@@ -1365,12 +1367,13 @@ void UTalesCharacterMovementComponent::PhysClimb(float deltaTime, int32 Iteratio
 	RestorePreAdditiveRootMotionVelocity();
 
 	// mapping Acceleration
-	Acceleration.Z = 0.f;
-	Acceleration = Acceleration.RotateAngleAxis(90.f, -UpdatedComponent->GetRightVector());
+	// Acceleration.Z = 0.f;
+	// Acceleration = Acceleration.RotateAngleAxis(90.f, -UpdatedComponent->GetRightVector());
+	
 	if(!HasAnimRootMotion() && !CurrentRootMotion.HasOverrideVelocity())
 	{
 		CalcVelocity(deltaTime, 0.f, true, GetMaxBrakingDeceleration());
-		Velocity = FVector::VectorPlaneProject(Velocity, CurrentClimbablefaceNormal);
+		// Velocity = FVector::VectorPlaneProject(Velocity, CurrentClimbablefaceNormal);
 	}
 
 	ApplyRootMotionToVelocity(deltaTime);
@@ -1407,6 +1410,67 @@ void UTalesCharacterMovementComponent::OnClimbMontageEnded(UAnimMontage* Montage
 		Safe_bWantsToClimb = true;
 		Safe_bClimbTransitionFinished = true;
 	}
+}
+
+void UTalesCharacterMovementComponent::HandleHop(float SafeDistance,int Index)
+{
+	if(CheckCanHopUp(100.f, -30.f, SafeDistance) && ensureAlways(ClimbHopMontage[Index]))
+	{
+		// PlayClimbMontage(HopUpMontage);
+		CharacterOwner->PlayAnimMontage(ClimbHopMontage[Index]);
+	}
+}
+
+bool UTalesCharacterMovementComponent::CheckCanHopUp(float TraceDistance, float EyeOffset, float HopEndOffset)
+{
+	FHitResult HopUpHit;
+	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
+	FVector EyeHeightOffset = UpdatedComponent->GetUpVector() * (CharacterOwner->BaseEyeHeight + EyeOffset);
+	FVector Start = ComponentLocation + EyeHeightOffset;
+	FVector End = Start + UpdatedComponent->GetForwardVector() * TraceDistance;
+	GetWorld()->LineTraceSingleByProfile(HopUpHit, Start, End, "BlockAll", TalesCharacterOwner->GetIgnoreCharacterParams());
+	FHitResult SaftyLedgeHit;	
+	EyeHeightOffset = UpdatedComponent->GetUpVector() * (CharacterOwner->BaseEyeHeight + HopEndOffset);
+	Start = ComponentLocation + EyeHeightOffset;
+	End = Start + UpdatedComponent->GetForwardVector() * TraceDistance;
+	GetWorld()->LineTraceSingleByProfile(SaftyLedgeHit, Start, End, "BlockAll", TalesCharacterOwner->GetIgnoreCharacterParams());
+	
+	if(HopUpHit.bBlockingHit && SaftyLedgeHit.bBlockingHit)
+	{
+		return true;
+	}
+	return false;
+}
+
+void UTalesCharacterMovementComponent::RequestHopping()
+{
+	const FVector UnrotatedLastInputVector = UKismetMathLibrary::Quat_UnrotateVector(UpdatedComponent->GetComponentQuat(), GetLastInputVector());
+
+	const float DotResult = FVector::DotProduct(UnrotatedLastInputVector.GetSafeNormal(), FVector::UpVector);
+
+	if(DotResult >= 0.9f)
+	{
+		// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, TEXT("Hop UP"));
+		HandleHop(150.f, 0);
+	}else if(DotResult <= -0.9f)
+	{
+		// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Blue, TEXT("Hop Down"));
+		HandleHop(-150.f, 1);
+	}else if(DotResult >= 0.5 && DotResult <= 0.86)
+	{
+		if(FVector::DotProduct(UnrotatedLastInputVector.GetSafeNormal(), FVector::RightVector) > 0)
+		{
+			HandleHop(150.f, 2);
+			// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, TEXT("Hop UP Right"));
+		}
+		else
+		{
+			HandleHop(150.f, 3);
+			// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Black, TEXT("Hop UP Left"));
+		}
+	}
+	
+	
 }
 #pragma endregion
 // ---------------------------------------       Trigger        ---------------------------------------------

@@ -4,6 +4,8 @@
 #include "TalesCharacterMovementComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDashStartDelegate);
+DECLARE_DELEGATE(FOnEnterClimbState);
+DECLARE_DELEGATE(FOnExitClimbState);
 
 class ATalesCharacter;
 class UTalesCharacterAnimInstance;
@@ -119,6 +121,8 @@ private:
 	UAnimMontage* OutClimbMontage;
 	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
 	UAnimMontage* ProxyClimbStartMontage;
+	UPROPERTY(EditDefaultsOnly, Category = "Custom|Climb")
+	TArray<UAnimMontage*> ClimbHopMontage;
 	UPROPERTY(Transient)
 	ATalesCharacter* TalesCharacterOwner;
 	
@@ -151,6 +155,8 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_ClimbStart) bool Proxy_bClimbStart;
 	// Delegates
 	UPROPERTY(BlueprintAssignable) FDashStartDelegate DashStartDelegate;
+	FOnEnterClimbState OnEnterClimbStateDelegate;
+	FOnExitClimbState  OnExitClimbStateDelegate;
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -179,6 +185,8 @@ public:
 	bool IsCustomMovementMode(ECustomMovementMode InCustomMocementMode) const;
 	UFUNCTION(BlueprintPure)
 	bool IsMovementMode(EMovementMode InMovementMode) const;
+	UFUNCTION()
+	FORCEINLINE FVector GetClimbableSurfaceNormal() const { return CurrentClimbablefaceNormal; }
 
 	UFUNCTION(BlueprintPure)
 	FVector GetUnRotatedClimbVelocity() const;
@@ -226,6 +234,8 @@ private:
 	FVector GetMantleStartLocation(FHitResult FrontHit, FHitResult SurfaceHit, bool bTallMantle) const;
 
 	// --------------------------------------    Climb    ------------------------------------------------
+	FVector CurrentClimbableSurfaceLocation;
+	FVector CurrentClimbablefaceNormal;
 	void EnterClimb(EMovementMode PrevMode, ECustomMovementMode PrevCustomMode);
 	void ExitClimb();
 	bool CanClimbUP();
@@ -233,6 +243,13 @@ private:
 	void PhysClimb(float deltaTime, int32 Iterations);
 	UFUNCTION()
 	void OnClimbMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	// -------------------------------------- Climb Hop ------------------------------------------------
+	void HandleHop(float SafeDistance, int Index);
+	bool CheckCanHopUp(float TraceDistance, float EyeOffset, float HopEndOffset);
+public:
+	void RequestHopping();
+
 	
 private:
 	bool IsServer() const;

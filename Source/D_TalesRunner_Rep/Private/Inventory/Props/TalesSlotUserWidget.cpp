@@ -12,6 +12,7 @@
 #include "Inventory/TalesInventoryComponent.h"
 #include "Inventory/TalesInventoryUserWidget.h"
 #include "Inventory/Props/TalesInfoCueUserWidget.h"
+#include "Inventory/Props/TalesInventoryUWActionMenu.h"
 #include "Kismet/GameplayStatics.h"
 
 void UTalesSlotUserWidget::NativeOnInitialized()
@@ -35,6 +36,27 @@ void UTalesSlotUserWidget::NativePreConstruct()
 		SlotSelectBorder->SetBrushFromTexture(UnHoverBorder);
 		SlotSelectBorder->SetBrushColor(FLinearColor(1.f, 1.f, 1.f, 0.4f));
 	}
+}
+
+FReply UTalesSlotUserWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if(InMouseEvent.IsMouseButtonDown(FKey(FName("RightMouseButton"))))
+	{
+		if(Data.Quantity != 0)
+		{
+			if(ensureAlways(ActionMenuClass))
+			{
+				auto ActionMenu = CreateWidget<UTalesInventoryUWActionMenu>(GetWorld(), ActionMenuClass);
+				if(Data.ItemType == Eatable)
+				{
+					ActionMenu->SetText(FText::FromString("Eat"));
+				}
+				ActionMenu->AddToViewport();
+			}
+		}
+	}
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+	
 }
 
 void UTalesSlotUserWidget::OnHovered()

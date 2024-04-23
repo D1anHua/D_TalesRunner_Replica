@@ -69,7 +69,7 @@ class D_TALESRUNNER_REP_API ATalesInventoryItem : public AActor , public ITalesI
 public:	
 	// Sets default values for this actor's properties
 	ATalesInventoryItem();
-
+	
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Mesh")
 	TObjectPtr<UStaticMeshComponent> ItemMesh;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Item")

@@ -7,6 +7,7 @@
 #include "Inventory/TalesInventoroyItem.h"
 #include "TalesSlotUserWidget.generated.h"
 
+class UTalesInventoryUWActionMenu;
 class UTalesInventoryComponent;
 /**
  * 
@@ -19,6 +20,7 @@ class D_TALESRUNNER_REP_API UTalesSlotUserWidget : public UUserWidget
 public:
 	virtual void NativeOnInitialized() override;
 	virtual void NativePreConstruct() override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	
 	//! @brief Button: will rewrite the hover, un hover, selected function
 	UPROPERTY(meta = (BindWidget))
@@ -29,7 +31,6 @@ public:
 	//! @brief  HoverBorderImage: When Hover it will visiable
 	UPROPERTY(meta = (BindWidget))
 	class UImage* HoverBorderImage;
-
 	//! @brief ItemImage: the main Texture for this Slot
 	UPROPERTY(meta = (BindWidget))
 	class UImage* ItemImage;
@@ -48,6 +49,9 @@ protected:
 	UTexture2D* UnHoverBorder;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
 	UTexture2D* HoverBorder;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category= "Data")
+	TSubclassOf<UTalesInventoryUWActionMenu> ActionMenuClass;
 
 	UPROPERTY(Transient)
 	UTalesInventoryComponent* InventoryComponent;

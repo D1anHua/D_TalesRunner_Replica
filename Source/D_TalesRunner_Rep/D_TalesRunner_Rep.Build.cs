@@ -16,6 +16,7 @@ public class D_TalesRunner_Rep : ModuleRules
 			"ApplicationCore",
 			"Engine", 
 			"InputCore",
+			"SlateCore",
 			"EnhancedInput",
 			"Niagara",
 			"ControlFlows",

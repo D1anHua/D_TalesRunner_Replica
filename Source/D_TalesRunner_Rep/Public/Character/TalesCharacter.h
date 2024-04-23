@@ -34,15 +34,27 @@ protected:
 	/* Enhanced Input, PCInputMapping using for PC Game */
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputMappingContext* PCInputMapping;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputMappingContext* ClimbInputMapping;
+	
+	void AddInputMappingContext(UInputMappingContext* ContextToAdd, int32 InPriority);
+	void RemoveInputMappingContext(UInputMappingContext* ContextToAdd);
+	// Change InputMapping
+	void OnPlayerEnterClimbState();
+	void OnPlayerExitClimbState();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* Input_Move;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* Input_ClimbMove;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* Input_Jump;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* Input_Sprint;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	UInputAction* Input_LookMouse;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UInputAction* Input_ClimbHop;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
 	TObjectPtr<UTalesInventoryComponent> InventoryComponent;
@@ -75,9 +87,11 @@ protected:
 	
 	/* Enhanced Input Function*/
 	void MoveFunc(const FInputActionInstance& Instance);
+	void ClimbMoveFunc(const FInputActionInstance& Instance);
 	void SprintStart(const FInputActionInstance& Instance);
 	void SprintStop(const FInputActionInstance& Instance);
 	void LookMouse(const FInputActionInstance& Instance);
+	void ClimbHop(const FInputActionInstance& Instance);
 	
 public:
 	virtual void Jump() override;

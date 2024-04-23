@@ -57,7 +57,11 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 void ATalesCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	AddInputMappingContext(PCInputMapping, 0);
+	
 	SprintLineNiagaraComp->Deactivate();
+	// Add Mappings for our game, more complex games may have multiple Contexts that are added/removed at runtime.
 	// JetPackThrusterComp->Deactivate();
 	// JetPackThrusterAudioComp->Activate();
 	// JetPackThrusterAudioComp->Stop();
@@ -75,6 +79,37 @@ void ATalesCharacter::PostInitializeComponents()
 	{
 		SprintTimeLineComp->AddInterpFloat(SprintFovChangeFloatCurve, UpdateSprintFOVTrack);
 	}
+
+	if(TalesCharacterMovementComponent)
+	{
+		TalesCharacterMovementComponent->OnEnterClimbStateDelegate.BindUObject(this, &ThisClass::OnPlayerEnterClimbState);
+		TalesCharacterMovementComponent->OnExitClimbStateDelegate.BindUObject(this, &ThisClass::OnPlayerExitClimbState);
+	}
+}
+
+void ATalesCharacter::AddInputMappingContext(UInputMappingContext* ContextToAdd, int32 InPriority)
+{
+	if(!ContextToAdd) return;
+
+	if(APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		if(UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			Subsystem->AddMappingContext(ContextToAdd, InPriority);
+		}
+	}
+}
+
+void ATalesCharacter::RemoveInputMappingContext(UInputMappingContext* ContextToAdd)
+{
+	if(!ContextToAdd) return;
+	if(APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		if(UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			Subsystem->RemoveMappingContext(ContextToAdd);
+		}
+	}
 }
 
 // Called to bind functionality to input
@@ -82,32 +117,36 @@ void ATalesCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	const APlayerController* PC = GetController<APlayerController>();
-	const ULocalPlayer* LP = PC->GetLocalPlayer();
-
-	UEnhancedInputLocalPlayerSubsystem* Subsystem = LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	check(Subsystem);
-
-	Subsystem->ClearAllMappings();
-
-	// Add Mappings for our game, more complex games may have multiple Contexts that are added/removed at runtime.
-	Subsystem->AddMappingContext(PCInputMapping, 0);
 
 	// New Enhanced Input System
 	UEnhancedInputComponent* InputComp = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 
 	// General
 	if(ensureAlways(Input_Move))	 InputComp->BindAction(Input_Move,   ETriggerEvent::Triggered, this, &ATalesCharacter::MoveFunc);
+	if(ensureAlways(Input_ClimbMove)) InputComp->BindAction(Input_ClimbMove, ETriggerEvent::Triggered, this, &ATalesCharacter::ClimbMoveFunc);
 	if(ensureAlways(Input_Jump))	 InputComp->BindAction(Input_Jump,   ETriggerEvent::Triggered, this, &ATalesCharacter::Jump);
+	if(ensureAlways(Input_ClimbHop)) InputComp->BindAction(Input_ClimbHop, ETriggerEvent::Triggered, this, &ATalesCharacter::ClimbHop);
 	// if(ensureAlways(Input_Jump))	 InputComp->BindAction(Input_Jump,   ETriggerEvent::Completed, this, &ATalesCharacter::StopJumping);
 	if(ensureAlways(Input_LookMouse))InputComp->BindAction(Input_LookMouse, ETriggerEvent::Triggered, this, &ATalesCharacter::LookMouse);
 	
 	// Sprint while key is held
 	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Started,   this, &ATalesCharacter::SprintStart);
 	if(ensureAlways(Input_Sprint))	 InputComp->BindAction(Input_Sprint, ETriggerEvent::Completed, this, &ATalesCharacter::SprintStop);
-	
+
 }
 
+
+
+void ATalesCharacter::OnPlayerEnterClimbState()
+{
+	ensureAlways(ClimbInputMapping);
+	AddInputMappingContext(ClimbInputMapping, 1);	
+}
+
+void ATalesCharacter::OnPlayerExitClimbState()
+{
+	RemoveInputMappingContext(ClimbInputMapping);
+}
 
 void ATalesCharacter::MoveFunc(const FInputActionInstance& Instance)
 {
@@ -126,6 +165,18 @@ void ATalesCharacter::MoveFunc(const FInputActionInstance& Instance)
 	// Move Right / Left
 	const FVector RightVector = FRotationMatrix(ControlRot).GetUnitAxis(EAxis::Y);
 	AddMovementInput(RightVector, AxisValue.Y);
+}
+
+void ATalesCharacter::ClimbMoveFunc(const FInputActionInstance& Instance)
+{
+	FVector2d MovementVector = Instance.GetValue().Get<FVector2d>();
+
+	const FVector ForwardDirection = FVector::CrossProduct(-TalesCharacterMovementComponent->GetClimbableSurfaceNormal(), GetActorRightVector());
+
+	const FVector RightDirection = FVector::CrossProduct(-TalesCharacterMovementComponent->GetClimbableSurfaceNormal(), -GetActorUpVector());
+
+	AddMovementInput(ForwardDirection, MovementVector.X);
+	AddMovementInput(RightDirection, MovementVector.Y);
 }
 
 void ATalesCharacter::SprintStart(const FInputActionInstance& Instance)
@@ -177,6 +228,14 @@ void ATalesCharacter::LookMouse(const FInputActionInstance& Instance)
 	const FVector2D Value = Instance.GetValue().Get<FVector2D>();
 	AddControllerYawInput(Value.X);
 	AddControllerPitchInput(Value.Y);
+}
+
+void ATalesCharacter::ClimbHop(const FInputActionInstance& Instance)
+{
+	if(TalesCharacterMovementComponent)
+	{
+		TalesCharacterMovementComponent->RequestHopping();
+	}
 }
 
 void ATalesCharacter::Jump()
@@ -232,6 +291,8 @@ FCollisionQueryParams ATalesCharacter::GetIgnoreCharacterParams() const
 
 	return Params;
 }
+
+
 
 // Called every frame
 void ATalesCharacter::Tick(float DeltaTime)
