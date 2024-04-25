@@ -7,15 +7,18 @@
 #include "Components/Image.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
+#include "Inventory/Props/TalesSlotUserWidget.h"
 
 void UTalesInventoryUWActionMenu::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 	if(CancelButton)
 	{
+		EquipButton->OnClicked.AddDynamic(this, &ThisClass::EquipClick);
 		EquipButton->OnHovered.AddDynamic(this, &ThisClass::EquipHover);
 		EquipButton->OnUnhovered.AddDynamic(this, &ThisClass::EquipUnHover);
 		
+		DropButton->OnClicked.AddDynamic(this, &ThisClass::DropClick);
 		DropButton->OnHovered.AddDynamic(this, &ThisClass::DropHover);
 		DropButton->OnUnhovered.AddDynamic(this, &ThisClass::DropUnHover);
 		
@@ -50,6 +53,16 @@ void UTalesInventoryUWActionMenu::NativeOnMouseLeave(const FPointerEvent& InMous
 	RemoveFromParent();
 }
 
+#pragma region Equip
+void UTalesInventoryUWActionMenu::EquipClick()
+{
+	if(InstigatorSlot)
+	{
+		InstigatorSlot->UseThisItem();
+	}
+	RemoveFromParent();
+}
+
 void UTalesInventoryUWActionMenu::EquipHover()
 {
 	if(EquipHoverImage)
@@ -64,6 +77,17 @@ void UTalesInventoryUWActionMenu::EquipUnHover()
 	{
 		EquipHoverImage->SetVisibility(ESlateVisibility::Hidden);
 	}
+}
+#pragma endregion
+
+#pragma region Drop
+void UTalesInventoryUWActionMenu::DropClick()
+{
+	if(InstigatorSlot)
+	{
+		InstigatorSlot->DropThisItem();
+	}
+	RemoveFromParent();
 }
 
 void UTalesInventoryUWActionMenu::DropHover()
@@ -81,7 +105,9 @@ void UTalesInventoryUWActionMenu::DropUnHover()
 		DropHoverImage->SetVisibility(ESlateVisibility::Hidden);
 	}
 }
+#pragma endregion
 
+#pragma region Calcel
 void UTalesInventoryUWActionMenu::CancelHover()
 {
 	if(CancelHoverImage)
@@ -98,3 +124,4 @@ void UTalesInventoryUWActionMenu::CancelUnHover()
 	}
 }
 
+#pragma endregion

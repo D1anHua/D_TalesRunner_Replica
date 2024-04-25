@@ -3,6 +3,7 @@
 
 #include "Inventory/TalesInventoryComponent.h"
 
+#include "ContentBrowserDataSource.h"
 #include "IDetailTreeNode.h"
 #include "Character/TalesCharacter.h"
 #include "Components/CapsuleComponent.h"
@@ -36,6 +37,8 @@ void UTalesInventoryComponent::BeginPlay()
 	{
 		auto CapsuleComp = TalesCharacterOwner->GetCapsuleComponent();
 		CapsuleComp->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnCharacterOverlap);
+		SetSwardSlot(this->OnUseSwardSlot);
+		SetShieldSlot(this->OnUseShieldSlot);
 	}
 
 	if(ensureAlways(InventoryWidgetClass))
@@ -51,15 +54,80 @@ void UTalesInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	PrimaryInteractTraceByFoot();
 }
 
-void UTalesInventoryComponent::OnCharacterOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void UTalesInventoryComponent::SetSwardSlot(FTalesInventoryItemSlot NewSwardSlot)
 {
-	auto Money = Cast<ATalesMoney>(OtherActor);
-	InventoryMoneyAmount += Money->MoneyData.Amount;
-	// MoneyAmountChangeDelegate.Broadcast(Cast<AActor>(Money), this, InventoryMoneyAmount, Money->MoneyData.Amount);
-	Money->Destroy();
-	GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Blue, FString::FromInt(InventoryMoneyAmount));	
+	OnUseSwardSlot = NewSwardSlot;
+	if(OnUseSwardSlot.IsValid() && OnUseSwardSlot.ItemType == Sward)
+	{
+		auto Row = OnUseSwardSlot.GetRow();
+		if(Row)
+		{
+			TalesCharacterOwner->SetSwardMesh(Row->Mesh);
+		}
+	}else if(!OnUseSwardSlot.IsValid())
+	{
+		// 拆掉Mesh
+		TalesCharacterOwner->SetSwardMesh(nullptr);
+	}
 }
 
+void UTalesInventoryComponent::SetShieldSlot(FTalesInventoryItemSlot NewShieldSlot)
+{
+	OnUseShieldSlot = NewShieldSlot;
+	if(OnUseShieldSlot.IsValid() && OnUseShieldSlot.ItemType == Shield)
+	{
+		auto Row = OnUseShieldSlot.GetRow();
+		if(Row)
+		{
+			TalesCharacterOwner->SetShieldMesh(Row->Mesh);
+		}
+	}
+	else if(!OnUseShieldSlot.IsValid())
+	{
+		TalesCharacterOwner->SetShieldMesh(nullptr);
+	}
+}
+
+bool UTalesInventoryComponent::PackageDataDecrease(FTalesInventoryItemSlot TargetName, int delta)
+{
+	if(delta > 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Inventory Component : Package Data Changes Doesn't support delta > 0"))
+		return false;
+	}
+	auto ItemType = TargetName.ItemType;
+	TMultiMap<FName, FTalesInventoryItemSlot>* PickedColumnItems;
+	switch(ItemType)
+	{
+	case Sward:
+		PickedColumnItems = &PackageDatas.Sward;
+		break;
+	case Shield:
+		PickedColumnItems = &PackageDatas.Shield;
+		break;
+	case Eatable:
+		TargetName.Quantity = delta;
+		PackageDataChange_Eatable(TargetName);
+		return true;
+	default:
+		return false;			
+	}
+	// 只对 sward 和 shield
+	auto FindAns = PickedColumnItems->Find(TargetName.ItemRowHandle.RowName);
+	while(FindAns != nullptr &&  FindAns->ItemRowHandle.RowName == TargetName.ItemRowHandle.RowName)
+	{
+		if(*FindAns == TargetName)
+		{
+			PickedColumnItems->RemoveSingle(TargetName.ItemRowHandle.RowName, TargetName);
+			return true;
+		}
+		else
+		{
+			++FindAns;
+		}
+	}
+	return false;
+}
 // ------------------------------------------------  Main Data -------------------------------------------------
 void UTalesInventoryComponent::AddItemToPackage(AActor* HitActor)
 {
@@ -77,34 +145,39 @@ void UTalesInventoryComponent::AddItemToPackage(AActor* HitActor)
 			break;
 		case Eatable:
 			PickedColumnItems = &PackageDatas.Eatable;
-			break;
+			PackageDataChange_Eatable(ItemActor->Item);
+			return;
 		default:
 			return;			
 		}
-		// Add Item
-		auto FindAns = PickedColumnItems->Find(ItemActor->Item.ItemRowHandle.RowName);
+		// Add Item, Just Sward and Shield
+		// 注: Sward 不合并 quantity, 直接装
+		// Sward和shield没有 Stack的概念
+		PickedColumnItems->AddUnique(ItemActor->Item.ItemRowHandle.RowName, ItemActor->Item);	
+	}
+}
+
+void UTalesInventoryComponent::PackageDataChange_Eatable(const FTalesInventoryItemSlot ItemEatable)
+{
+		auto FindAns = PackageDatas.Eatable.Find(ItemEatable.ItemRowHandle.RowName);
 		if(FindAns == nullptr)
 		{
-			// 原先没有
-			PickedColumnItems->AddUnique(ItemActor->Item.ItemRowHandle.RowName, ItemActor->Item);	
-		}else
-		{
-			int numTemp = FindAns->Quantity + ItemActor->Item.Quantity;
-			if(numTemp <= ItemActor->MenuItem.StackSize)
+			if(ItemEatable.IsValid())
 			{
-				// 表示没装满
-				FindAns->Quantity = numTemp;
-			}
-			else
-			{
-				// 装满了
-				FindAns->Quantity = ItemActor->MenuItem.StackSize;
-				numTemp -= ItemActor->MenuItem.StackSize;
-				ItemActor->Item.Quantity = numTemp;
-				PickedColumnItems->AddUnique(ItemActor->Item.ItemRowHandle.RowName, ItemActor->Item);	
+				// 原先没有
+				PackageDatas.Eatable.AddUnique(ItemEatable.ItemRowHandle.RowName, ItemEatable);	
 			}
 		}
-	}
+		else
+		{
+			// 不考虑装满不装满的问题了
+			int numTemp = FindAns->Quantity + ItemEatable.Quantity;
+			FindAns->Quantity = numTemp;
+			if(FindAns->Quantity <= 0)
+			{
+				PackageDatas.Eatable.RemoveSingle(ItemEatable.ItemRowHandle.RowName, *FindAns);	
+			}
+		}
 }
 
 void UTalesInventoryComponent::PickKeyPressed()
@@ -181,3 +254,12 @@ void UTalesInventoryComponent::PrimaryInteractTraceByFoot()
 	// FColor DebugColor = bGetHit ? FColor::Green : FColor::Red;
 	// DrawDebugLine(GetWorld(), BeginLocation, EndLocation, DebugColor, false, 2.f, 0, 2.f);	
 }
+void UTalesInventoryComponent::OnCharacterOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	auto Money = Cast<ATalesMoney>(OtherActor);
+	InventoryMoneyAmount += Money->MoneyData.Amount;
+	// MoneyAmountChangeDelegate.Broadcast(Cast<AActor>(Money), this, InventoryMoneyAmount, Money->MoneyData.Amount);
+	Money->Destroy();
+	GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Blue, FString::FromInt(InventoryMoneyAmount));	
+}
+

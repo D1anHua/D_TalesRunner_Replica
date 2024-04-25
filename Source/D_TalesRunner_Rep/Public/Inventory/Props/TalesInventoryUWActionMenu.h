@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "TalesInventoryUWActionMenu.generated.h"
 
+class UTalesSlotUserWidget;
 class USizeBox;
 class UButton;
 class UTextBlock;
@@ -22,6 +23,10 @@ public:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;
 	void SetText(FText Text);
+
+	//! @设置触发者, 需要在创建后调用
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE void SetInstigatorActor(UTalesSlotUserWidget* InstigatorActor){ this->InstigatorSlot = InstigatorActor; };
 
 	UPROPERTY(meta= (BindWidget))
 	USizeBox* ActionMenuSizeBox;
@@ -42,14 +47,18 @@ public:
 	UImage* CancelHoverImage;
 
 protected:
-	void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
 
 private:
+	UFUNCTION()
+	void EquipClick();
 	UFUNCTION()
 	void EquipHover();
 	UFUNCTION()
 	void EquipUnHover();
 	
+	UFUNCTION()
+	void DropClick();
 	UFUNCTION()
 	void DropHover();
 	UFUNCTION()
@@ -59,4 +68,7 @@ private:
 	void CancelHover();
 	UFUNCTION()
 	void CancelUnHover();
+
+	UPROPERTY(Transient)
+	UTalesSlotUserWidget* InstigatorSlot;	
 };

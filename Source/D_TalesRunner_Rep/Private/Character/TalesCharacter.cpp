@@ -51,6 +51,13 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	//
 	// JetPackThrusterAudioComp = CreateDefaultSubobject<UAudioComponent>("JetPackSFX");
 
+	// MeshComponent
+	SwardMesh = CreateDefaultSubobject<UStaticMeshComponent>("SwardMesh");
+	SwardMesh->SetupAttachment(GetMesh(), TEXT("SwardSocket"));
+	
+	ShieldMesh = CreateDefaultSubobject<UStaticMeshComponent>("ShieldMesh");
+	ShieldMesh->SetupAttachment(GetMesh(), TEXT("ShieldSocket"));
+	
 }
 
 // Called when the game starts or when spawned
@@ -292,6 +299,15 @@ FCollisionQueryParams ATalesCharacter::GetIgnoreCharacterParams() const
 	return Params;
 }
 
+void ATalesCharacter::SetSwardMesh(UStaticMesh* InSwardMesh)
+{
+	this->SwardMesh->SetStaticMesh(InSwardMesh);
+}
+
+void ATalesCharacter::SetShieldMesh(UStaticMesh* InShieldMesh)
+{
+	this->ShieldMesh->SetStaticMesh(InShieldMesh);
+}
 
 
 // Called every frame

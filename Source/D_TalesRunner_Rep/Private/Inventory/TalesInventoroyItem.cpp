@@ -16,7 +16,27 @@ ATalesInventoryItem::ATalesInventoryItem()
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 	RootComponent = ItemMesh;
 	ItemMesh->SetSimulatePhysics(true);
+}
 
+void ATalesInventoryItem::SetItemSlotOnInitialize(FTalesInventoryItemSlot NewItem)
+{
+	this->Item = NewItem;
+	if(!Item.ItemRowHandle.IsNull())
+	{
+		FString ContextString = "Searching for Mesh";
+		FTalesInventoryMenuItem* Row = Item.ItemRowHandle.GetRow<FTalesInventoryMenuItem>(ContextString);
+		
+		if(Row)
+		{
+			MenuItem.Name			= Row->Name;
+			MenuItem.Description    = Row->Description;
+			MenuItem.Thumbnails		= Row->Thumbnails;
+			MenuItem.StackSize		= Row->StackSize;
+			MenuItem.Power		    = Row->Power;
+			MenuItem.Mesh			= Row->Mesh;
+			ItemMesh->SetStaticMesh(MenuItem.Mesh);
+		}
+	}
 }
 
 void ATalesInventoryItem::Interact_Implementation(APawn* InstigatorPawn)
@@ -40,21 +60,6 @@ void ATalesInventoryItem::PostEditChangeProperty(FPropertyChangedEvent& Property
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	if(!Item.ItemRowHandle.IsNull())
-	{
-		FString ContextString = "Searching for Mesh";
-		FTalesInventoryMenuItem* Row = Item.ItemRowHandle.GetRow<FTalesInventoryMenuItem>(ContextString);
-		
-		if(Row)
-		{
-			MenuItem.Name			= Row->Name;
-			MenuItem.Description    = Row->Description;
-			MenuItem.Thumbnails		= Row->Thumbnails;
-			MenuItem.StackSize		= Row->StackSize;
-			MenuItem.Power		    = Row->Power;
-			MenuItem.Mesh			= Row->Mesh;
-			ItemMesh->SetStaticMesh(MenuItem.Mesh);
-		}
-	}
+	SetItemSlotOnInitialize(this->Item);
 }
 #endif

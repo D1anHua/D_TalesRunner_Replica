@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/Image.h"
 #include "Inventory/TalesInventoroyItem.h"
 #include "TalesInfoCueUserWidget.generated.h"
 
@@ -32,6 +33,8 @@ protected:
 	UNamedSlot* PowerNamedSlot;
 	UPROPERTY(meta = (BindWidget))
 	UImage* ImageInfo;
+	UPROPERTY(meta = (BindWidget))
+	UImage* ActivateImage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Texture")
 	UTexture2D* SwardTexture;	
@@ -50,4 +53,8 @@ protected:
 	
 public:
 	void InitializeAllInfo(int SourcePowerData, FTalesInventoryItemSlot Item);
+
+public:
+	inline void SetActivate(){ ActivateImage->SetVisibility(ESlateVisibility::Visible);}
+	inline void SetUnActivate(){ ActivateImage->SetVisibility(ESlateVisibility::Hidden);}
 };

@@ -24,6 +24,8 @@ public:
 		this->NowHealth = InNowHealth;
 	};
 
+	void AddHelathRuntime(float NowHealth);
+
 protected:
 	UPROPERTY(meta=(BindWidget))
 	class UWrapBox* HealthBarWarpBox;

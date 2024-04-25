@@ -43,14 +43,31 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE float GetHeartMax() const { return InventoryMaxHeart; }
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE FTalesInventoryItemSlot GetSwardSlot() const { return OnUseSwardSlot; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FORCEINLINE FTalesInventoryItemSlot GetShieldSlot() const { return OnUseShieldSlot; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE FTalesInventoryPackageDatas GetPackagesDatas() const { return PackageDatas; }
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE UTalesInventoryUserWidget* GetInventoryUserWidget() const { return InventoryWidget; }
 	
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	FORCEINLINE void SetHeartNow(const float NowHeart){ InventoryHeartNow = NowHeart; }
+	FORCEINLINE void SetHeartNow(const float NowHeart){ InventoryHeartNow = NowHeart > InventoryMaxHeart ? InventoryMaxHeart : NowHeart; }
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FORCEINLINE void SetHeartMax(const float MaxHeart){ InventoryMaxHeart = MaxHeart; }
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void SetSwardSlot(struct FTalesInventoryItemSlot NewSwardSlot);
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	void SetShieldSlot(struct FTalesInventoryItemSlot NewShieldSlot);
+
+	/*!
+	 * 用于修改PackageData中某一项的数据 
+	 * @param TargetSlot 想要增加或者删除的目标的Name
+	 * @param Delta  增加或者删除的量, 目前是只能减少
+	 * @return 存在返回true
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool PackageDataDecrease(FTalesInventoryItemSlot TargetSlot ,int Delta);
 
 	//! Bind Event
 	UFUNCTION()
@@ -79,9 +96,13 @@ protected:
 	UPROPERTY(Transient)
 	class ATalesCharacter* TalesCharacterOwner;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Inventory|Data")
+	struct FTalesInventoryItemSlot OnUseSwardSlot;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Inventory|Data")
+	struct FTalesInventoryItemSlot OnUseShieldSlot;
 
 	// Main Data
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Inventory|Data")
+	UPROPERTY()
 	FTalesInventoryPackageDatas PackageDatas;
 
 	// @TODO 后面要加到接口里面, 每个物体的拾取的操作都不一样
@@ -93,4 +114,6 @@ protected:
 private:
 	void PrimaryInteractTraceBySight();
 	void PrimaryInteractTraceByFoot();
+	// void SetInventoryData(TMultiMap<FName, FTalesInventoryItemSlot>& Data, FTalesInventoryItemSlot NewData, FTalesInventoryItemSlot OldData);
+	void PackageDataChange_Eatable(FTalesInventoryItemSlot ItemEatable);
 };

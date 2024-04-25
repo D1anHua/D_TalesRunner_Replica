@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "TalesInventoryUserWidget.generated.h"
 
+class UTalesHealthBarUserWidget;
 /**
  * 
  */
@@ -20,14 +21,23 @@ public:
 	
 	UFUNCTION()
 	FORCEINLINE class UTalesInfoCueUserWidget* GetInfoCueUserWidget() const { return WBPItemsInfoCue; }
+	UTalesHealthBarUserWidget* GetHealthBarUserWidget() const { return WBPHealthBar; }
+
+
+	UFUNCTION()
+	FORCEINLINE UTalesInventoryMainLeftUserWidget* GetMainLeftMenu() const { return WBPMainLeft; }
 
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* MoneyAmountText;
 
 	UPROPERTY(meta = (BindWidget))
+	class UTalesHealthBarUserWidget* WBPHealthBar;
+	UPROPERTY(meta = (BindWidget))
 	class UTalesInfoCueUserWidget* WBPItemsInfoCue;
 
+	UPROPERTY(meta = (BindWidget), BlueprintReadWrite)
+	class UTalesInventoryMainLeftUserWidget* WBPMainLeft;
 	// UFUNCTION()
 	// void MoneyAmountUpdate(AActor* InstigateActor, UTalesInventoryComponent* OwnComp, int32 MoneyAmount, int32 delta);
 };

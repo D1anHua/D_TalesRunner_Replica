@@ -3,11 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "TalesInventoroyItem.h"
 #include "Blueprint/UserWidget.h"
+#include "Props/TalesSlotUserWidget.h"
 #include "TalesInventoryMainLeftUserWidget.generated.h"
 
 #define BUTTON_ITEM_NAME {"Sward", "Shield", "Eatable"}
 
+class UTalesSlotUserWidget;
 struct FTalesInventoryItemSlot;
 class ATalesCharacter;
 /**
@@ -22,6 +25,13 @@ public:
 	virtual void NativeOnInitialized() override;
 	virtual void NativePreConstruct() override;
 	virtual void NativeConstruct() override;
+
+public:
+	inline UTalesSlotUserWidget* GetSwardSlotOnActivate() const {return EquipSwardSlot;}
+	inline UTalesSlotUserWidget* GetShieldSlotOnActivate() const {return EquipShieldSlot;}
+	void SetSwardSlotOnActivate(UTalesSlotUserWidget* NewSwardSlot);
+	void SetShieldSlotOnActivate(UTalesSlotUserWidget* NewShieldSlot);
+	
 protected:
 	UPROPERTY(meta = (BindWidget))
 	class UWidgetSwitcher* PageSwitcher;
@@ -76,6 +86,12 @@ private:
 	ATalesCharacter* TalesCharacterOwner;
 
 	void InitializeData();
-	void InitializeOnePageData(TMultiMap<FName, FTalesInventoryItemSlot>& PageData, UWrapBox*& Box);
+	void InitializeOnePageData(TMultiMap<FName, FTalesInventoryItemSlot>& PageData, UWrapBox*& Box, FTalesInventoryItemSlot ActivateSlot, UTalesSlotUserWidget*& EquipSlot);
+	void InitializeOnePageData_Eatable(TMultiMap<FName, FTalesInventoryItemSlot>& PageData, UWrapBox*& Box);
 	void SetTalesCharacterOwner();
+
+	UPROPERTY(Transient)
+	UTalesSlotUserWidget* EquipSwardSlot;
+	UPROPERTY(Transient)
+	UTalesSlotUserWidget* EquipShieldSlot;
 };

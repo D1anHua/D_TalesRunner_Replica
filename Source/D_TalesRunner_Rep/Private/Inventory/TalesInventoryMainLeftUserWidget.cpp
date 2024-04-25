@@ -89,17 +89,47 @@ void UTalesInventoryMainLeftUserWidget::ActivateButton(int Index)
 
 void UTalesInventoryMainLeftUserWidget::InitializeData()
 {
+	EquipShieldSlot = nullptr;
+	EquipSwardSlot = nullptr;
 	if(TalesCharacterOwner && ensureAlways(SlotClass))
 	{
 		FTalesInventoryPackageDatas Datas = TalesCharacterOwner->GetTalesInventoryComponent()->GetPackagesDatas();	
 		// Sward
-		InitializeOnePageData(Datas.Sward, SwardWrapBox);
-		InitializeOnePageData(Datas.Shield, ShieldWrapBox);
-		InitializeOnePageData(Datas.Eatable, EatableWrapBox);
+		InitializeOnePageData(Datas.Sward, SwardWrapBox, TalesCharacterOwner->GetTalesInventoryComponent()->GetSwardSlot(), this->EquipSwardSlot);
+		InitializeOnePageData(Datas.Shield, ShieldWrapBox, TalesCharacterOwner->GetTalesInventoryComponent()->GetShieldSlot(), this->EquipShieldSlot);
+		InitializeOnePageData_Eatable(Datas.Eatable, EatableWrapBox);
 	}
 }
 
 void UTalesInventoryMainLeftUserWidget::InitializeOnePageData(TMultiMap<FName, FTalesInventoryItemSlot>& PageData,
+	UWrapBox*& Box, FTalesInventoryItemSlot ActivateItem, UTalesSlotUserWidget*& EquipSlot)
+{
+	if(Box)
+	{
+		Box->ClearChildren();
+		if(PageData.IsEmpty())
+		{
+			// 添加默认显示框
+			UTalesSlotUserWidget* Widget = CreateWidget<UTalesSlotUserWidget>(this, SlotClass);
+			Box->AddChildToWrapBox(Widget);
+		}else
+		{
+			for(auto& item : PageData)
+			{
+				UTalesSlotUserWidget* Widget = CreateWidget<UTalesSlotUserWidget>(this, SlotClass);
+				Widget->SetDataConstruct(item.Value);
+				Box->AddChildToWrapBox(Widget);
+				if(ActivateItem.IsValid() && item.Value == ActivateItem && EquipSlot == nullptr)
+				{
+					EquipSlot = Widget;
+					Widget->ActivateSlot();
+				}
+			}
+		}
+	}
+}
+
+void UTalesInventoryMainLeftUserWidget::InitializeOnePageData_Eatable(TMultiMap<FName, FTalesInventoryItemSlot>& PageData,
 	UWrapBox*& Box)
 {
 	if(Box)
@@ -107,12 +137,30 @@ void UTalesInventoryMainLeftUserWidget::InitializeOnePageData(TMultiMap<FName, F
 		Box->ClearChildren();
 		if(PageData.IsEmpty())
 		{
+			// 添加默认显示框
 			UTalesSlotUserWidget* Widget = CreateWidget<UTalesSlotUserWidget>(this, SlotClass);
 			Box->AddChildToWrapBox(Widget);
 		}else
 		{
 			for(auto& item : PageData)
 			{
+				// 判断一下
+				int StackMaxNum = item.Value.Quantity;
+				auto Row = item.Value.GetRow();
+				if(Row)
+				{
+					StackMaxNum = Row->StackSize;	
+				}
+				if(item.Value.Quantity > StackMaxNum)
+				{
+					UTalesSlotUserWidget* Widget = CreateWidget<UTalesSlotUserWidget>(this, SlotClass);
+					auto BoxData = item.Value;
+					BoxData.Quantity = StackMaxNum;
+					Widget->SetDataConstruct(BoxData);
+					Box->AddChildToWrapBox(Widget);
+
+					item.Value.Quantity -= StackMaxNum;
+				}
 				UTalesSlotUserWidget* Widget = CreateWidget<UTalesSlotUserWidget>(this, SlotClass);
 				Widget->SetDataConstruct(item.Value);
 				Box->AddChildToWrapBox(Widget);
@@ -130,4 +178,25 @@ void UTalesInventoryMainLeftUserWidget::SetTalesCharacterOwner()
 		TalesCharacterOwner = nullptr;
 		UE_LOG(LogTemp, Error, TEXT("Inventroy Main Left: Error to Get TalesCharacter."))
 	}
+}
+
+void UTalesInventoryMainLeftUserWidget::SetSwardSlotOnActivate(UTalesSlotUserWidget* NewSwardSlot)
+{
+	// 确保不删除空指针
+	if(IsValid(this->EquipSwardSlot))
+	{
+		this->EquipSwardSlot->UnActivateSlot();
+	}
+	this->EquipSwardSlot = NewSwardSlot;
+	this->EquipSwardSlot->ActivateSlot();
+}
+
+void UTalesInventoryMainLeftUserWidget::SetShieldSlotOnActivate(UTalesSlotUserWidget* NewShieldSlot)
+{
+	if(IsValid(this->EquipShieldSlot))
+	{
+		this->EquipShieldSlot->UnActivateSlot();
+	}
+	this->EquipShieldSlot = NewShieldSlot;
+	this->EquipShieldSlot->ActivateSlot();
 }

@@ -29,6 +29,9 @@ public:
 	FORCEINLINE UTalesCharacterMovementComponent* GetTalesCharacterMovement() const { return TalesCharacterMovementComponent; }
 	FCollisionQueryParams GetIgnoreCharacterParams() const;
 	FORCEINLINE UTalesInventoryComponent* GetTalesInventoryComponent() const { return InventoryComponent; }
+
+	void SetSwardMesh(UStaticMesh* InSwardMesh);
+	void SetShieldMesh(UStaticMesh* InShieldMesh);
 	
 protected:
 	/* Enhanced Input, PCInputMapping using for PC Game */
@@ -76,6 +79,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sprint|VFX")
 	TObjectPtr<UNiagaraComponent> SprintLineNiagaraComp;
 	
+	// Static Mesh of Sward and Shield	
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> SwardMesh;
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> ShieldMesh;
 	//
 	// UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "JetPack|VFX")
 	// TObjectPtr<UNiagaraComponent> JetPackThrusterComp;
@@ -84,6 +92,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "CameraShake")
 	TSubclassOf<UCameraShakeBase> SprintShake;
+
 	
 	/* Enhanced Input Function*/
 	void MoveFunc(const FInputActionInstance& Instance);

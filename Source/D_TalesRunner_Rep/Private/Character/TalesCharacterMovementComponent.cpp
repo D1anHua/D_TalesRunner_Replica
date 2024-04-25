@@ -1477,12 +1477,12 @@ void UTalesCharacterMovementComponent::RequestHopping()
 #pragma region trigger
 void UTalesCharacterMovementComponent::SprintPressed()
 {
-	Safe_bWantToSprint = !Safe_bWantToSprint;
+	Safe_bWantToSprint = true;
 }
 
 void UTalesCharacterMovementComponent::SprintReleased()
 {
-	// Safe_bWantToSprint = false;
+	Safe_bWantToSprint = false;
 }
 
 void UTalesCharacterMovementComponent::CrouchPressed()

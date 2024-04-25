@@ -19,6 +19,7 @@ void UTalesInfoCueUserWidget::NativePreConstruct()
 void UTalesInfoCueUserWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	ActivateImage->SetVisibility(ESlateVisibility::Hidden);
 	InitializeAllInfo(0, DataPoint);
 }
 
@@ -46,7 +47,7 @@ void UTalesInfoCueUserWidget::InitializeAllInfo(int SourcePowerData, FTalesInven
 				if(ensureAlways(IntPowerClass))
 				{
 					auto Widget = CreateWidget<UTalesInventoryPropsPowerSward>(GetWorld(), IntPowerClass);
-					Widget->SetPower(0, FMath::Floor(Power));
+					Widget->SetPower(SourcePowerData, FMath::Floor(Power));
 					PowerNamedSlot->AddChild(Widget);
 				}
 			}
@@ -58,7 +59,7 @@ void UTalesInfoCueUserWidget::InitializeAllInfo(int SourcePowerData, FTalesInven
 				if(ensureAlways(IntPowerClass))
 				{
 					auto Widget = CreateWidget<UTalesInventoryPropsPowerSward>(GetWorld(), IntPowerClass);
-					Widget->SetPower(0, FMath::Floor(Power));
+					Widget->SetPower(SourcePowerData, FMath::Floor(Power));
 					PowerNamedSlot->AddChild(Widget);
 				}
 			}

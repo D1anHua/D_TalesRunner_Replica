@@ -40,6 +40,10 @@
 		{
 			"Name": "CommonLoadingScreen",
 			"Enabled": false
+		},
+		{
+			"Name": "AnimationWarping",
+			"Enabled": true
 		}
 	]
 }

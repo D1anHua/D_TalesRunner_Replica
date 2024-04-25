@@ -59,6 +59,16 @@ struct FTalesInventoryItemSlot
 		}
 		return true;
 	}
+
+	inline bool IsValid() const
+	{
+		return Quantity > 0;
+	}
+
+	inline FTalesInventoryMenuItem* GetRow() const
+	{
+		return ItemRowHandle.GetRow<FTalesInventoryMenuItem>("Searching for row...");
+	}
 };
 
 UCLASS()
@@ -76,6 +86,8 @@ public:
 	FTalesInventoryItemSlot Item;
 	UPROPERTY(BlueprintReadOnly)
 	FTalesInventoryMenuItem MenuItem;
+
+	void SetItemSlotOnInitialize(FTalesInventoryItemSlot NewItem);
 	
 	//! Begin ITalesInventoryInterface
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "UserWidget")
