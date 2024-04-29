@@ -26,7 +26,8 @@ public class D_TalesRunner_Rep : ModuleRules
 			"GameplayTags",
 			"CommonUI",
 			"CommonInput",
-			"NetCore"
+			"NetCore",
+			"AnimGraphRuntime"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

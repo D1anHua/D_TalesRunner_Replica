@@ -1005,7 +1005,7 @@ bool UTalesCharacterMovementComponent::TryMantle()
 		
 		LINE(FrontStart, FrontStart + ForwardVec * CheckDistance, FColor::Red)
 		
-				if(GetWorld()->LineTraceSingleByProfile(FrontHit, FrontStart, FrontStart + ForwardVec * CheckDistance, "BlackAll", Params))
+				if(GetWorld()->LineTraceSingleByProfile(FrontHit, FrontStart, FrontStart + ForwardVec * CheckDistance, "BlockAll", Params))
 				{
 					break;
 				}

@@ -251,7 +251,7 @@ void ATalesCharacter::Jump()
 	Super::Jump();
 
 	bPressedJump = false;
-	UE_LOG(LogTemp, Warning, TEXT("Jump is Server: %d"), HasAuthority());
+	// UE_LOG(LogTemp, Warning, TEXT("Jump is Server: %d"), HasAuthority());
 }
 
 void ATalesCharacter::StopJumping()
