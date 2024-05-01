@@ -4,7 +4,7 @@
 #include "Character/TalesRunnerComponent.h"
 
 #include "EnhancedInputSubsystems.h"
-#include "AttributeSystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystem/TalesAbilitySystemCompBase.h"
 #include "Character/TalesPawnExtensionComponent.h"
 #include "Components/GameFrameworkComponentManager.h"
 #include "GameFramework/PlayerState.h"

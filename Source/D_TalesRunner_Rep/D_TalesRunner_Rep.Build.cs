@@ -27,7 +27,7 @@ public class D_TalesRunner_Rep : ModuleRules
 			"CommonUI",
 			"CommonInput",
 			"NetCore",
-			"AnimGraphRuntime"
+			"AnimGraphRuntime",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

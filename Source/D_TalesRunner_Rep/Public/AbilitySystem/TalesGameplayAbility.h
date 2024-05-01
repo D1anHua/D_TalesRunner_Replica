@@ -77,41 +77,29 @@ class D_TALESRUNNER_REP_API UTalesGameplayAbility : public UGameplayAbility
 public:
 	UTalesGameplayAbility(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	UFUNCTION(BlueprintCallable, Category = "Tales|Ability")
-	UTalesAbilitySystemCompBase* GetTalesAbilityStstemComponentFromActorInfo() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Ability")
+	UTalesAbilitySystemCompBase* GetTalesAbilitySystemComponentFromActorInfo() const;
 	
-	UFUNCTION(BlueprintCallable, Category = "Tales|Ability")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Ability")
 	ATalesPlayerControllerBase* GetTalesPlayerControllerFromActorInfo() const;
 	
-	UFUNCTION(BlueprintCallable, Category = "Tales|Ability")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Ability")
 	AController* GetControllerFromActorInfo() const;
 
-	ETalesAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; };
-	ETalesAbilityActivationGroup GetActivationGroup() const { return ActivationGroup; };
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Ability")
+	class ATalesCharacter* GetTalesCharacterFromActionInfo() const;
 
 protected:
-	// TODO: 暂时不用
-	virtual void NativeOnAbilityFailedToActivate(const FGameplayTagContainer& FailedReason) const;
-	//! 不设置蓝图实现版本: BlueprintImplementEvent
-
 	//! UGameplayAbility Interface
-	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const override;
-	virtual void SetCanBeCanceled(bool bCanBeCanceled) override;
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 
-protected:
-	//! Defines how this ability is meant to activate
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Tales|Ability Activation")
-	ETalesAbilityActivationPolicy ActivationPolicy;
-
-	//! Defines the relationship between this ability activating and other ability activating
-	ETalesAbilityActivationGroup ActivationGroup;
-
-	// TODO: 不考虑 Additional Cost(暂时没有需求)
-
-	// TODO: Failure tags 暂时也没有考虑
-	//! Map of failure tags to simple error messages
-	TMap<FGameplayTag, FText> FailureTagToUserFacingMessages;
-
-	// TODO: Camera Mode 现在还没有, 后面可能需要	
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+	TArray<TSubclassOf<UGameplayEffect>> OngoingEffectsToApplyOnStart;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+	TArray<TSubclassOf<UGameplayEffect>> OngoingEffectsToRemoveOnEnd;
+
+	TArray<FActiveGameplayEffectHandle> RemoveOnEndEffectHandles;
+
 };

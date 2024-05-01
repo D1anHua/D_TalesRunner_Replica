@@ -1,11 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "AttributeSystem/TalesAbilitySet.h"
-#include "AttributeSystem/TalesGameplayAbility.h"
-#include "AttributeSystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystem/TalesAbilitySet.h"
+#include "AbilitySystem/TalesGameplayAbility.h"
+#include "AbilitySystem/TalesAbilitySystemCompBase.h"
 #include "GameplayEffect.h"
-#include "System/TalesLogChannels.h"
 
 void FTalesAbilitySet_GrantedHandles::AddAbilitySpecHandle(const FGameplayAbilitySpecHandle& Handle)
 {

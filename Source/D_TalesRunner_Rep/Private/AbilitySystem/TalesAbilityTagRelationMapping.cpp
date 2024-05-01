@@ -1,10 +1,10 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "AttributeSystem/TalesAbilityTagRelationMapping.h"
+#include "AbilitySystem/TalesAbilityTagRelationMapping.h"
 
 void UTalesAbilityTagRelationMapping::GetAbilityTagsToBlockAndCancel(const FGameplayTagContainer& AbilityTags,
-	FGameplayTagContainer* OutTagsToBlock, FGameplayTagContainer* OutTagsToCancel) const
+                                                                     FGameplayTagContainer* OutTagsToBlock, FGameplayTagContainer* OutTagsToCancel) const
 {
 	for(const FTalesAbilityTagRelationship& Tag : AbilityTagRelationships)
 	{

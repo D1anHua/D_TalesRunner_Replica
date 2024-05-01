@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AttributeSystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystem/TalesAbilitySystemCompBase.h"
 #include "GameFramework/Actor.h"
 #include "TalesMoney.generated.h"
 

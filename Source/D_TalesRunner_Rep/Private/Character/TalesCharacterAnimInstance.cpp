@@ -24,11 +24,6 @@ void UTalesCharacterAnimInstance::NativeInitializeAnimation()
 void UTalesCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
-}
-
-void UTalesCharacterAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
-{
-	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
 	if(!TalesCharacter || !TalesCharacterMovementComponent) return;
 	UpdateLocationData(DeltaSeconds);
 	UpdateRotationData();
@@ -41,6 +36,11 @@ void UTalesCharacterAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSec
 	UpdateWallDetection();
 
 	bIsFirstUpdate = false;
+}
+
+void UTalesCharacterAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
+{
+	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
 }
 
 void UTalesCharacterAnimInstance::UpdateLocationData(float DeltaSeconds)
@@ -85,12 +85,12 @@ void UTalesCharacterAnimInstance::UpdateVelocityData()
 	LocalVelocity2D = UKismetMathLibrary::Quat_UnrotateVector(WorldRotation.Quaternion(), WorldVelocity2D);
 	LocalVelocityDirectionAngle = UKismetAnimationLibrary::CalculateDirection(WorldVelocity2D, WorldRotation);
 	LocalVelocityDirectionAngleWithOffset = LocalVelocityDirectionAngle - RootYawOffset;
-	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(FMath::CeilToInt(LocalVelocityDirectionAngle)));
-	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(FMath::CeilToInt(LocalVelocityDirectionAngleWithOffset)));
+	// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(FMath::CeilToInt(LocalVelocityDirectionAngle)));
+	// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(FMath::CeilToInt(LocalVelocityDirectionAngleWithOffset)));
 	LocalVelocityDirection = SelectCardinalDirectionfromAngle(LocalVelocityDirectionAngleWithOffset, CardinalDirectionDeadZone, LocalVelocityDirection, bIsMovingLastUpdate);
 	LocalVelocityDirectionNoOffset = SelectCardinalDirectionfromAngle(LocalVelocityDirectionAngle, CardinalDirectionDeadZone, LocalVelocityDirectionNoOffset, bIsMovingLastUpdate);
-	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(LocalVelocityDirection));
-	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(LocalVelocityDirectionNoOffset));
+	// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(LocalVelocityDirection));
+	// GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Red, FString::FromInt(LocalVelocityDirectionNoOffset));
 }
 
 void UTalesCharacterAnimInstance::UpdateAccelerationData()
@@ -182,8 +182,6 @@ void UTalesCharacterAnimInstance::GetCustomMode()
 	bIsProning   = TalesCharacterMovementComponent->IsProne();	
 	bIsClimbing  = TalesCharacterMovementComponent->IsClimbing();	
 }
-
-
 
 void UTalesCharacterAnimInstance::UpdateWallDetection()
 {

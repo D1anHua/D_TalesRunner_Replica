@@ -4,7 +4,7 @@
 #include "System/TalesGameInstance.h"
 #include "Engine/GameInstance.h"
 #include "Components/GameFrameworkComponentManager.h"
-#include "AttributeSystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystemGlobals.h"
 
 #include "GamePlay/TalesPlayerControllerBase.h"
 #include "System/TalesGameplayTags.h"
@@ -24,7 +24,10 @@ ATalesPlayerControllerBase* UTalesGameInstance::GetPrimaryPlayerController() con
 void UTalesGameInstance::Init()
 {
 	Super::Init();
+	// GAS Course
+	UAbilitySystemGlobals::Get().InitGlobalData();
 
+	
 	// Register our custom init states
 	UGameFrameworkComponentManager* ComponentManager = GetSubsystem<UGameFrameworkComponentManager>(this);
 

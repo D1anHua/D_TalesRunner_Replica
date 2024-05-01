@@ -2,7 +2,7 @@
 
 #include "Character/TalesPawnExtensionComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "AttributeSystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystem/TalesAbilitySystemCompBase.h"
 #include "Components/GameFrameworkComponentManager.h"
 #include "System/TalesGameplayTags.h"
 #include "System/TalesLogChannels.h"

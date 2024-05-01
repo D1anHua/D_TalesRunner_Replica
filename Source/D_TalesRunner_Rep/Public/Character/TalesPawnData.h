@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AttributeSystem/TalesAbilitySet.h"
-#include "AttributeSystem/TalesAbilityTagRelationMapping.h"
+#include "AbilitySystem/TalesAbilitySet.h"
+#include "AbilitySystem/TalesAbilityTagRelationMapping.h"
 #include "Engine/DataAsset.h"
 #include "Input/TalesInputConfig.h"
 #include "TalesPawnData.generated.h"

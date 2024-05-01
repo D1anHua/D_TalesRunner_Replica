@@ -1,9 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#include "Character/TalesCharacter.h"
 
-#include "..\..\Public\Character\TalesCharacter.h"
-
-#include "Components/AudioComponent.h"
+// #include "Components/AudioComponent.h"
 #include "NiagaraComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -15,6 +14,16 @@
 #include "Inventory/TalesInventorInteractUI.h"
 #include "Inventory/TalesInventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
+
+// GAS
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystem/TalesAttributeSetBase.h"
+#include "DataAsset/CharacterDataAsset.h"
+
+// Network
+#include "Net/UnrealNetwork.h"
 
 // TODO: Debug system include File, Delete later
 
@@ -57,15 +66,26 @@ ATalesCharacter::ATalesCharacter(const FObjectInitializer& ObjectInitializer)
 	
 	ShieldMesh = CreateDefaultSubobject<UStaticMeshComponent>("ShieldMesh");
 	ShieldMesh->SetupAttachment(GetMesh(), TEXT("ShieldSocket"));
+
+	// GAS
+	AbilitySystemCompBase = CreateDefaultSubobject<UTalesAbilitySystemCompBase>(TEXT("AbilitySystemComponet"));
+	AbilitySystemCompBase->SetIsReplicated(true);
+	AbilitySystemCompBase->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
+	AttributeSetBase = CreateDefaultSubobject<UTalesAttributeSetBase>(TEXT("AttributeSet"));
+}
+
+void ATalesCharacter::PawnClientRestart()
+{
+	Super::PawnClientRestart();
 	
+	AddInputMappingContext(PCInputMapping, 0);
 }
 
 // Called when the game starts or when spawned
 void ATalesCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	AddInputMappingContext(PCInputMapping, 0);
 	
 	SprintLineNiagaraComp->Deactivate();
 	// Add Mappings for our game, more complex games may have multiple Contexts that are added/removed at runtime.
@@ -73,12 +93,21 @@ void ATalesCharacter::BeginPlay()
 	// JetPackThrusterAudioComp->Activate();
 	// JetPackThrusterAudioComp->Stop();
 	// Interact Component
-	InteractUI = CreateWidget<UTalesInventorInteractUI>(UGameplayStatics::GetPlayerController(GetWorld(),0), InteractUIClass);
+	if(GetLocalRole() == ROLE_AutonomousProxy)
+	{
+		InteractUI = CreateWidget<UTalesInventorInteractUI>(UGameplayStatics::GetPlayerController(GetWorld(),0), InteractUIClass);
+	}
 }
 
 void ATalesCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
+
+	if(IsValid(CharacterDataAsset))
+	{
+		SetCharacterData(CharacterDataAsset->CharacterData);	
+	}
+	
 	UpdateSprintFOVTrack.BindDynamic(this, &ATalesCharacter::UpdateSprintFov);
 
 	//If we have a float curve, bind it's graph to our update function
@@ -92,6 +121,12 @@ void ATalesCharacter::PostInitializeComponents()
 		TalesCharacterMovementComponent->OnEnterClimbStateDelegate.BindUObject(this, &ThisClass::OnPlayerEnterClimbState);
 		TalesCharacterMovementComponent->OnExitClimbStateDelegate.BindUObject(this, &ThisClass::OnPlayerExitClimbState);
 	}
+}
+
+void ATalesCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ATalesCharacter, CharacterData);
 }
 
 void ATalesCharacter::AddInputMappingContext(UInputMappingContext* ContextToAdd, int32 InPriority)
@@ -249,7 +284,6 @@ void ATalesCharacter::Jump()
 {
 	bPressedTalesJump = true;
 	Super::Jump();
-
 	bPressedJump = false;
 	// UE_LOG(LogTemp, Warning, TEXT("Jump is Server: %d"), HasAuthority());
 }
@@ -268,7 +302,7 @@ void ATalesCharacter::UpdateSprintFov(float TimelineOutput)
 
 void ATalesCharacter::ActivateInteractUI()
 {
-	if(InteractUI == nullptr)
+	if(!InteractUI)
 	{
 		InteractUI = CreateWidget<UTalesInventorInteractUI>(GetWorld(), InteractUIClass);	
 	}
@@ -281,7 +315,7 @@ void ATalesCharacter::ActivateInteractUI()
 
 void ATalesCharacter::UnActivateInteractUI()
 {
-	if(InteractUI)
+	if(InteractUI->IsInViewport())
 	{
 		InteractUI->RemoveFromParent();
 	}
@@ -309,6 +343,76 @@ void ATalesCharacter::SetShieldMesh(UStaticMesh* InShieldMesh)
 	this->ShieldMesh->SetStaticMesh(InShieldMesh);
 }
 
+#pragma region GAS
+bool ATalesCharacter::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, FGameplayEffectContextHandle InEffectContext)
+{
+	if(!Effect.Get()) return false;
+
+	FGameplayEffectSpecHandle SpecHandle = AbilitySystemCompBase->MakeOutgoingSpec(Effect, 1, InEffectContext);
+	if(SpecHandle.IsValid())
+	{
+		FActiveGameplayEffectHandle ActiveGEHandle = AbilitySystemCompBase->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		return ActiveGEHandle.WasSuccessfullyApplied();
+	}
+	return false;
+}
+
+void ATalesCharacter::GiveAbilities()
+{
+	if(HasAuthority() && AbilitySystemCompBase)
+	{
+		for(auto DefaultAbility : CharacterData.Abilities)
+		{
+			AbilitySystemCompBase->GiveAbility(FGameplayAbilitySpec(DefaultAbility));
+		}
+	}
+}
+
+void ATalesCharacter::ApplyStartupEffects()
+{
+	if(GetLocalRole() == ROLE_Authority)
+	{
+		FGameplayEffectContextHandle EffectContext = AbilitySystemCompBase->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+
+		for(auto& CharacterEffect : CharacterData.Effects)
+		{
+			ApplyGameplayEffectToSelf(CharacterEffect, EffectContext);
+		}
+	}
+}
+
+void ATalesCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	AbilitySystemCompBase->InitAbilityActorInfo(this, this);
+	
+	GiveAbilities();
+	ApplyStartupEffects();
+}
+
+void ATalesCharacter::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	AbilitySystemCompBase->InitAbilityActorInfo(this, this);
+}
+
+UAbilitySystemComponent* ATalesCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemCompBase;	
+}
+
+void ATalesCharacter::OnRep_CharacterData()
+{
+	InitFromCharacterData(CharacterData, true);
+}
+
+void ATalesCharacter::InitFromCharacterData(const FCharacterData& InCharacterData, bool bFromReplication)
+{
+	
+}
+#pragma endregion
 
 // Called every frame
 void ATalesCharacter::Tick(float DeltaTime)

@@ -4,7 +4,7 @@
 #include "Character/TalesCharacterBase.h"
 
 #include "Character/TalesCharacterMovementComponent.h"
-#include "AttributeSystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystem/TalesAbilitySystemCompBase.h"
 #include "Character/TalesPawnExtensionComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/GameFrameworkComponentManager.h"

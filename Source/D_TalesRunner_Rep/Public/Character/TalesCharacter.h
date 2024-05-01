@@ -6,32 +6,84 @@
 #include "CoreMinimal.h"
 #include "InputAction.h"
 #include "GameFramework/Character.h"
+// GAS
+#include "AbilitySystemInterface.h"
+#include "Abilities/GameplayAbility.h"
+#include "System/TalesRunnerTypes.h"
+
 #include "TalesCharacter.generated.h"
 
-class UTalesInventorInteractUI;
-class UTalesInventoryComponent;
-class UTalesCharacterMovementComponent;
+
+
+// Component
 class UCameraComponent;
-class UInputMappingContext;
 class USpringArmComponent;
+class UTalesInventoryComponent;
+class UTalesAbilitySystemCompBase;
+class UTalesCharacterMovementComponent;
+
+// GAS
+class UTalesAttributeSetBase;
+class UGameplayEffect;
+class UGameplayAbility;
+
+// Enhanced Input
+class UInputMappingContext;
 class UInputAction;
-class UNiagaraComponent;
 struct FInputActionInstance;
 
+// NiagaraSystem
+class UNiagaraComponent;
+
 UCLASS()
-class D_TALESRUNNER_REP_API ATalesCharacter : public ACharacter
+class D_TALESRUNNER_REP_API ATalesCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ATalesCharacter(const FObjectInitializer& ObjectInitializer);
+	virtual void PawnClientRestart() override;
 
+	// Help Function
 	FORCEINLINE UTalesCharacterMovementComponent* GetTalesCharacterMovement() const { return TalesCharacterMovementComponent; }
 	FCollisionQueryParams GetIgnoreCharacterParams() const;
 	FORCEINLINE UTalesInventoryComponent* GetTalesInventoryComponent() const { return InventoryComponent; }
 
 	void SetSwardMesh(UStaticMesh* InSwardMesh);
 	void SetShieldMesh(UStaticMesh* InShieldMesh);
+
+#pragma region GASCourse
+public:
+	// Helper Function In GAS
+	bool ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, FGameplayEffectContextHandle InEffectContext);
+	FORCEINLINE FCharacterData GetCharacterData() const { return CharacterData; }
+	FORCEINLINE void SetCharacterData(FCharacterData InCharacterData){ CharacterData = InCharacterData; InitFromCharacterData(CharacterData); }
+protected:
+	void GiveAbilities();
+	void ApplyStartupEffects();
+
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
+	UFUNCTION() void OnRep_CharacterData();
+
+	// ~~~~~~~~~~~~~~~~~~~ IAbilitySystemInterface ~~~~~~~~~~~~~~~~~~~~~~~~~~
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	// ~~~~~~~~~~~~~~~~~ End IAbilitySystemInterface ~~~~~~~~~~~~~~~~~~~~~~~~
+
+	UPROPERTY(ReplicatedUsing = OnRep_CharacterData)
+	FCharacterData CharacterData;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "DataAssets")
+	class UCharacterDataAsset* CharacterDataAsset;
+
+	UPROPERTY(EditDefaultsOnly)
+	UTalesAbilitySystemCompBase* AbilitySystemCompBase;
+	
+	UPROPERTY(Transient)
+	UTalesAttributeSetBase* AttributeSetBase;
+
+	virtual void InitFromCharacterData(const FCharacterData& InCharacterData, bool bFromReplication = false);
+#pragma endregion
 	
 protected:
 	/* Enhanced Input, PCInputMapping using for PC Game */
@@ -108,6 +160,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
 	virtual void Tick(float DeltaTime) override;
@@ -148,10 +201,10 @@ private:
 	//! Interact Component
 public:
 	UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Interact")
-	TSubclassOf<UTalesInventorInteractUI> InteractUIClass;
+	TSubclassOf<class UTalesInventorInteractUI> InteractUIClass;
 	
 	UPROPERTY()	
-	UTalesInventorInteractUI* InteractUI;
+	class UTalesInventorInteractUI* InteractUI;
 
 	// Interact Begin
 	void ActivateInteractUI();

@@ -2,9 +2,6 @@
 
 
 #include "Inventory/TalesInventoryComponent.h"
-
-#include "ContentBrowserDataSource.h"
-#include "IDetailTreeNode.h"
 #include "Character/TalesCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "Inventory/TalesInventorInteractUI.h"
@@ -41,7 +38,7 @@ void UTalesInventoryComponent::BeginPlay()
 		SetShieldSlot(this->OnUseShieldSlot);
 	}
 
-	if(ensureAlways(InventoryWidgetClass))
+	if(ensureAlways(InventoryWidgetClass) && GetOwnerRole() == ROLE_AutonomousProxy)
 	{
 		 InventoryWidget = CreateWidget<UTalesInventoryUserWidget>(UGameplayStatics::GetPlayerController(GetWorld(), 0), InventoryWidgetClass);
 	}
@@ -246,7 +243,7 @@ void UTalesInventoryComponent::PrimaryInteractTraceByFoot()
 	}
 	else
 	{
-		if(TalesCharacterOwner->InteractUI->IsInViewport())
+		if(TalesCharacterOwner->InteractUI && TalesCharacterOwner->InteractUI->IsInViewport())
 		{
 			TalesCharacterOwner->UnActivateInteractUI();
 		}

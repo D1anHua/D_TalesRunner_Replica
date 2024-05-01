@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "TalesInventoryInterface.h"
 #include "TalesInventoryType.h"
-#include "AttributeSystem/TalesAbilitySystemCompBase.h"
+#include "AbilitySystem/TalesAbilitySystemCompBase.h"
 #include "GameFramework/Actor.h"
 #include "TalesInventoroyItem.generated.h"
 
